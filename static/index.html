@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Axiom Generator — Sovereign Matrix deterministic audit platform. Eliminate hallucinations via ontological deduction.">
+  <title>AXIOM GENERATOR | Sovereign Matrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     LANDING PAGE
+══════════════════════════════════════════════ -->
+<div id="landing-root" role="main" aria-label="Axiom Generator landing page">
+
+  <!-- Hero Section -->
+  <section class="landing-hero">
+    <div class="landing-hero-content">
+
+      <!-- Logo + Title inline row (left-aligned) -->
+      <div class="landing-logo-row">
+        <img src="aichip-logo-home.png" alt="AIChip Logo" class="landing-logo-img">
+        <span class="landing-logo-title">AXIOM GENERATOR</span>
+      </div>
+
+      <p class="landing-tagline">THE BEDROCK OF EXPLAINABILITY</p>
+      <p class="landing-quote">"Eliminating Hallucinations via Ontological Deduction."</p>
+
+      <!-- WHO / WHEN / WHAT -->
+      <div class="wwwhat-row" role="list">
+        <div class="wwwhat-card" role="listitem">
+          <div class="wwwhat-label">
+            <img src="Who_Shield.png" alt="Who" class="wwwhat-icon"> WHO
+          </div>
+          <div class="wwwhat-title">Mission-Critical Stakeholders</div>
+          <div class="wwwhat-desc">Recurring Admissible evidence for regulatory compliance.</div>
+        </div>
+        <div class="wwwhat-card" role="listitem">
+          <div class="wwwhat-label">
+            <img src="When_Lighting.png" alt="When" class="wwwhat-icon"> WHEN
+          </div>
+          <div class="wwwhat-title">High-Fallibility Scenarios</div>
+          <div class="wwwhat-desc">When the cost of hallucination exceeds the tolerance for error.</div>
+        </div>
+        <div class="wwwhat-card" role="listitem">
+          <div class="wwwhat-label">
+            <img src="What_Doc.png" alt="What" class="wwwhat-icon"> WHAT
+          </div>
+          <div class="wwwhat-title">Deterministic Audit Reports</div>
+          <div class="wwwhat-desc">Establishing high Probative Value through L1-L5 physical proofs.</div>
+        </div>
+      </div>
+
+      <!-- Logic Engine Selection -->
+      <div class="logic-engine-panel" role="group" aria-label="Logic engine selection">
+        <div class="logic-engine-label">Logic Engine Selection</div>
+        <div class="logic-engine-btns">
+          <button class="logic-btn"        id="lnd-logic-deduction"  data-engine="DEDUCTION"  aria-pressed="false">DEDUCTION</button>
+          <button class="logic-btn"        id="lnd-logic-induction"  data-engine="INDUCTION"  aria-pressed="false">INDUCTION</button>
+          <button class="logic-btn active" id="lnd-logic-abduction"  data-engine="ABDUCTION"  aria-pressed="true">ABDUCTION</button>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <button class="landing-cta" id="initialize-engine" aria-label="Initialize the Sovereign Matrix engine">
+        INITIALIZE ENGINE
+      </button>
+
+    </div>
+
+    <!-- Copyright footer -->
+    <div class="landing-copyright" aria-label="Copyright">
+      AICHIP CORPORATION | &copy; 2026. All rights reserved. | Designer: Dennis T.Y. Leo
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="scroll-hint" aria-hidden="true">SCROLL TO EXPLORE</div>
+  </section>
+
+  <!-- Paradigm Section -->
+  <section class="landing-paradigm" id="landing-paradigm">
+    <div class="paradigm-inner">
+      <h2 class="section-title">
+        <span class="accent">COLD-XRAG</span> SOVEREIGN PARADIGM
+      </h2>
+      <div class="section-rule" aria-hidden="true"></div>
+
+      <div class="paradigm-cards" role="list">
+        <div class="paradigm-card" role="listitem">
+          <div class="paradigm-num">01</div>
+          <div class="paradigm-card-title">Who We Serve</div>
+          <div class="paradigm-card-desc">Enterprise architects, risk mitigation engineers, and compliance officers requiring absolute zero-trust verification of mission-critical LLM deployments. We build for those who demand ontological certainty over probabilistic guesswork.</div>
+        </div>
+        <div class="paradigm-card" role="listitem">
+          <div class="paradigm-num">02</div>
+          <div class="paradigm-card-title">When to Deploy</div>
+          <div class="paradigm-card-desc">Deploy at the boundary layer before production commits. The Sovereign Matrix engages during critical model updates, regulatory compliance audits, and black-swan contingency planning where silent drift is categorically unacceptable.</div>
+        </div>
+        <div class="paradigm-card" role="listitem">
+          <div class="paradigm-num">03</div>
+          <div class="paradigm-card-title">What You Achieve</div>
+          <div class="paradigm-card-desc">A deterministically closed-world evaluation domain. Generative outputs are bound to verifiable physics and causal matrices. A complete, unforgeable audit object demonstrating exact Admissible or Blocked states is your paramount yield.</div>
+        </div>
+      </div>
+
+      <div class="pipeline-flow-title">DEDUCTIVE EXECUTION PIPELINE</div>
+      <div class="pipeline-flow" role="list">
+        <div class="pf-step" role="listitem">
+          <div class="pf-step-name">AXIOMATIC INGEST</div>
+          <div class="pf-step-desc">Physical constants &amp; boundaries defined.</div>
+        </div>
+        <div class="pf-arrow" aria-hidden="true">→</div>
+        <div class="pf-step" role="listitem">
+          <div class="pf-step-name">OCG VECTORIZATION</div>
+          <div class="pf-step-desc">State-space mapping to causal topologies.</div>
+        </div>
+        <div class="pf-arrow" aria-hidden="true">→</div>
+        <div class="pf-step" role="listitem">
+          <div class="pf-step-name">DEDUCTIVE INFERENCE</div>
+          <div class="pf-step-desc">Navier-Stokes / PDE constraint solving.</div>
+        </div>
+        <div class="pf-arrow" aria-hidden="true">→</div>
+        <div class="pf-step highlight" role="listitem">
+          <div class="pf-step-name">DETERMINISTIC YIELD</div>
+          <div class="pf-step-desc">Absolute unforgeable audit object.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /#landing-root -->
+
+
+<!-- ══════════════════════════════════════════════
+     DASHBOARD
+══════════════════════════════════════════════ -->
+<div id="dashboard-root" aria-label="Sovereign Matrix dashboard" role="application">
+
+  <!-- Global Header (dark — persistent) -->
+  <header id="global-header" role="banner">
+    <!-- Return to landing -->
+    <button class="header-return-btn" id="hdr-return-btn" aria-label="Return to landing page">RETURN</button>
+
+    <a href="#" class="header-brand" aria-label="Axiom Generator home">
+      <img src="aichip-logo-home.png" alt="AIChip" class="header-brand-img">
+      <span class="header-brand-name">AXIOM GENERATOR</span>
+    </a>
+
+    <!-- WHO / WHEN / WHAT condensed -->
+    <div class="header-wwwhat" role="group" aria-label="Context filters">
+      <button class="header-www-btn" id="hdr-who-btn"  title="WHO: Mission-Critical Stakeholders">WHO</button>
+      <button class="header-www-btn" id="hdr-when-btn" title="WHEN: High-Fallibility Scenarios">WHEN</button>
+      <button class="header-www-btn" id="hdr-what-btn" title="WHAT: Deterministic Audit Reports">WHAT</button>
+    </div>
+
+    <!-- Logic Engine toggles (compact) -->
+    <div class="header-logic-btns" role="group" aria-label="Logic engine (header)">
+      <button class="header-logic-btn"        id="hdr-logic-deduction" data-engine="DEDUCTION" aria-pressed="false">● DEDUCTION</button>
+      <button class="header-logic-btn"        id="hdr-logic-induction" data-engine="INDUCTION"  aria-pressed="false">+ INDUCTION</button>
+      <button class="header-logic-btn active" id="hdr-logic-abduction" data-engine="ABDUCTION"  aria-pressed="true">● ABDUCTION</button>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <nav class="header-nav" aria-label="Application navigation">
+      <button class="header-nav-btn" id="hdr-language-btn">🌐 LANGUAGE</button>
+      <button class="header-nav-btn" id="hdr-mcp-btn">MCP API</button>
+      <button class="header-nav-btn" id="hdr-pricing-btn">PRICING</button>
+      <button class="header-nav-btn primary" id="hdr-signin-btn">LOG IN / SIGN UP</button>
+      <button class="header-nav-btn" id="hdr-entropy-btn">ENTROPY EVAL</button>
+    </nav>
+
+  </header>
+
+  <!-- L1-L5 Pipeline Bar (dark) -->
+  <nav id="pipeline-bar" role="navigation" aria-label="L1-L5 pipeline stages">
+    <div class="pipeline-stages">
+      <button class="pipeline-stage active" id="stage-l1" data-stage="1"
+              title="L1 — Forensic Signal Characterization: Low-level analysis of stationarity, continuity, SNR. Isolates the 'surprising observation' from physical baseline.">
+        <div class="pipeline-stage-dot"></div>
+        <div class="pipeline-stage-label">
+          <span class="pipeline-stage-code">L1</span>
+          <span class="pipeline-stage-name">FORENSIC SIGNAL</span>
+        </div>
+      </button>
+      <button class="pipeline-stage" id="stage-l2" data-stage="2"
+              title="L2 — Axiomatic Pathway Enumeration: Maps characterization to library of formal mathematical candidates (PDEs, Wavelets, SDEs). Generates plausible explanations.">
+        <div class="pipeline-stage-dot"></div>
+        <div class="pipeline-stage-label">
+          <span class="pipeline-stage-code">L2</span>
+          <span class="pipeline-stage-name">PATHWAY ENUM</span>
+        </div>
+      </button>
+      <button class="pipeline-stage" id="stage-l3" data-stage="3"
+              title="L3 — Physical Admissibility Filtering: Executes 'Constraint-First Pruning' against hardware limits and physical invariants. Eliminates mathematically valid but physically unfeasible theories.">
+        <div class="pipeline-stage-dot"></div>
+        <div class="pipeline-stage-label">
+          <span class="pipeline-stage-code">L3</span>
+          <span class="pipeline-stage-name">ADMISSIBILITY</span>
+        </div>
+      </button>
+      <button class="pipeline-stage" id="stage-l4" data-stage="4"
+              title="L4 — Epistemic Calibration: Employs Bayesian Inference (MCMC) to quantify 'explanatory power' of surviving candidates. Produces confidence intervals and credible ranges.">
+        <div class="pipeline-stage-dot"></div>
+        <div class="pipeline-stage-label">
+          <span class="pipeline-stage-code">L4</span>
+          <span class="pipeline-stage-name">EPISTEMIC CALIB</span>
+        </div>
+      </button>
+      <button class="pipeline-stage" id="stage-l5" data-stage="5"
+              title="L5 — Regulatory Admissibility & Audit: Synthesizes path into human-verifiable 'Sovereign Audit Substrate.' Establishes Probative Value to freeze the axiom for deterministic runtime execution.">
+        <div class="pipeline-stage-dot"></div>
+        <div class="pipeline-stage-label">
+          <span class="pipeline-stage-code">L5</span>
+          <span class="pipeline-stage-name">REGULATORY AUDIT</span>
+        </div>
+      </button>
+    </div>
+    <div class="pipeline-progress" id="pipeline-progress" style="width:20%" aria-hidden="true"></div>
+
+    <!-- Page dots -->
+    <div class="pipeline-pages" aria-label="Page navigation">
+      <div class="page-dot active" id="pdot-1" data-page="1" role="button" tabindex="0" aria-label="Page 1"></div>
+      <div class="page-dot"        id="pdot-2" data-page="2" role="button" tabindex="0" aria-label="Page 2"></div>
+      <div class="page-dot"        id="pdot-3" data-page="3" role="button" tabindex="0" aria-label="Page 3"></div>
+    </div>
+  </nav>
+
+  <!-- Content Root -->
+  <div id="content-root">
+
+    <!-- ── PAGE 1: Upload & Configure ── -->
+    <div class="page active" id="page-1" role="tabpanel" aria-label="Upload and configure">
+      <div class="page-1-inner">
+        <h2 class="page-section-title">Upload Axiom Substrate</h2>
+        <p class="page-section-sub">Ingest your source evidence to begin ontological extraction.<br>
+          <span style="font-size:12px;color:var(--lt-muted);">
+            Documents: PDF · CSV · JSON · XLS · XLSX &nbsp;|&nbsp;
+            Images: PNG · JPG · TIFF · DICOM (X-ray, CT, MRI) &nbsp;|&nbsp;
+            Audio: WAV · MP3 · FLAC (infrasound, ultrasound, waveform) &nbsp;|&nbsp;
+            Video: MP4 · AVI · MOV
+          </span>
+        </p>
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="drop-zone" tabindex="0" role="button"
+             aria-label="Drop file here or click to browse">
+          <div class="drop-zone-icon" aria-hidden="true">📂</div>
+          <p class="drop-zone-text">Drag &amp; drop your evidence file here, or <strong>click to browse</strong></p>
+          <p class="drop-zone-hint">Supported: PDF · CSV · JSON · XLS · PNG · JPG · DICOM · WAV · MP3 · MP4 · MOV &nbsp;·&nbsp; Max 50MB</p>
+        </div>
+        <input type="file" id="upload-input"
+          accept=".csv,.json,.pdf,.xls,.xlsx,.png,.jpg,.jpeg,.tiff,.tif,.dcm,.wav,.mp3,.flac,.aac,.mp4,.avi,.mov,.mkv"
+          aria-hidden="true">
+
+        <!-- File info card (shown after selection) -->
+        <div class="file-info-card" id="file-info-card">
+          <div class="file-info-icon">📄</div>
+          <div>
+            <div class="file-info-name" id="file-info-name">—</div>
+            <div class="file-info-size" id="file-info-size">—</div>
+          </div>
+        </div>
+
+        <!-- Upload progress -->
+        <div class="progress-wrap" id="upload-progress-wrap">
+          <div class="progress-label">
+            <span id="upload-status-label">Uploading...</span>
+            <span class="text-mono" id="upload-pct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="upload-fill"></div>
+          </div>
+        </div>
+
+        <!-- Logic Engine (white context) -->
+        <div class="config-section">
+          <div class="config-label">Logic Engine Mode</div>
+          <div class="logic-btns-light" role="group">
+            <button class="logic-btn-light"        id="pg1-logic-deduction" data-engine="DEDUCTION" aria-pressed="false">DEDUCTION</button>
+            <button class="logic-btn-light"        id="pg1-logic-induction" data-engine="INDUCTION"  aria-pressed="false">INDUCTION</button>
+            <button class="logic-btn-light active" id="pg1-logic-abduction" data-engine="ABDUCTION"  aria-pressed="true">ABDUCTION</button>
+          </div>
+        </div>
+
+        <!-- Domain config -->
+        <div class="config-section">
+          <div class="config-label">Domain Classification</div>
+          <div class="logic-btns-light" role="group">
+            <button class="logic-btn-light active" data-domain="AUTO" aria-pressed="true">AUTO-DETECT</button>
+            <button class="logic-btn-light" data-domain="MECHANICS" aria-pressed="false">MECHANICS</button>
+            <button class="logic-btn-light" data-domain="THERMO" aria-pressed="false">THERMODYNAMICS</button>
+            <button class="logic-btn-light" data-domain="EM" aria-pressed="false">ELECTROMAGNETISM</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /#page-1 -->
+
+    <!-- ── PAGE 2: Analysis ── -->
+    <div class="page" id="page-2" role="tabpanel" aria-label="Analysis view">
+
+      <!-- Left: Axiom Browser (30%) -->
+      <aside class="axiom-browser" id="axiom-browser" aria-label="Axiom repository browser">
+        <div class="browser-header">
+          <h3>AXIOM REPO</h3>
+          <div class="browser-search">
+            <span class="browser-search-icon" aria-hidden="true">🔍</span>
+            <input type="search" id="axiom-search" placeholder="Search axioms..." aria-label="Search axiom repository">
+          </div>
+        </div>
+
+        <!-- Status filters -->
+        <div class="browser-filters" role="group" aria-label="Filter by status">
+          <button class="filter-chip all active"         id="filter-all"         data-filter="all">ALL</button>
+          <button class="filter-chip canonical"          id="filter-canonical"   data-filter="CANONICAL">✓ OK</button>
+          <button class="filter-chip anomalous"          id="filter-anomalous"   data-filter="ANOMALOUS">⚠ ANOM</button>
+          <button class="filter-chip hypothesized"       id="filter-hypothesized" data-filter="HYPOTHESIZED">◈ HYPO</button>
+          <button class="filter-chip incomplete"         id="filter-incomplete"  data-filter="INCOMPLETE">○ INC</button>
+        </div>
+
+        <!-- Domain tree -->
+        <div class="browser-tree" id="axiom-tree" role="tree" aria-label="Axiom domain tree">
+          <!-- Populated by JS -->
+        </div>
+      </aside>
+
+      <!-- Right: Analysis panel (70%) -->
+      <div class="analysis-panel" id="analysis-panel">
+
+        <!-- Inner tabs -->
+        <div class="analysis-tabs" role="tablist" aria-label="Analysis view tabs">
+          <button class="analysis-tab active" id="atab-core"        data-tab="core"        role="tab" aria-selected="true"  aria-controls="aview-core">CORE</button>
+          <button class="analysis-tab"        id="atab-gnn"         data-tab="gnn"         role="tab" aria-selected="false" aria-controls="aview-gnn">GNN</button>
+          <button class="analysis-tab"        id="atab-world-model" data-tab="world-model" role="tab" aria-selected="false" aria-controls="aview-world-model">WORLD MODEL</button>
+          <button class="analysis-tab"        id="atab-causal"      data-tab="causal"      role="tab" aria-selected="false" aria-controls="aview-causal">CAUSAL MATRIX</button>
+        </div>
+
+        <!-- Canvas area -->
+        <div class="analysis-canvas-area" id="analysis-canvas-area">
+          <!-- CORE view -->
+          <div id="aview-core" role="tabpanel" aria-labelledby="atab-core" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+            <div class="analysis-empty" id="core-empty">
+              <div class="analysis-empty-icon">🔭</div>
+              <div class="analysis-empty-text">Select an axiom from the repository to begin analysis</div>
+            </div>
+            <canvas id="core-canvas" style="display:none;width:100%;height:100%;" aria-label="Core axiom visualization"></canvas>
+          </div>
+
+          <!-- GNN view -->
+          <div id="aview-gnn" role="tabpanel" aria-labelledby="atab-gnn" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">
+            <canvas id="gnn-canvas" style="width:100%;height:100%;" aria-label="GNN 3D node graph"></canvas>
+          </div>
+
+          <!-- World Model view -->
+          <div id="aview-world-model" role="tabpanel" aria-labelledby="atab-world-model" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">
+            <canvas id="wm-canvas" style="width:100%;height:100%;" aria-label="World model lattice"></canvas>
+          </div>
+
+          <!-- Causal Matrix view -->
+          <div id="aview-causal" role="tabpanel" aria-labelledby="atab-causal" style="width:100%;height:100%;display:none;align-items:center;justify-content:center;">
+            <canvas id="causal-canvas" style="width:100%;height:100%;" aria-label="Causal matrix heatmap"></canvas>
+          </div>
+        </div>
+
+        <!-- Axiom Detail Panel (expandable) -->
+        <div class="axiom-detail-panel" id="axiom-detail-panel" aria-label="Selected axiom detail">
+          <div class="axiom-detail-header">
+            <div>
+              <div class="axiom-detail-id" id="detail-id">—</div>
+              <div class="axiom-detail-name" id="detail-name">—</div>
+            </div>
+            <div class="axiom-status-badge" id="detail-status-badge">—</div>
+          </div>
+
+          <!-- Layer tabs -->
+          <div class="layer-tabs" role="tablist">
+            <button class="layer-tab-btn active" id="ltab-1" data-layer="1" aria-pressed="true">Layer 1 — Audit Header</button>
+            <button class="layer-tab-btn"        id="ltab-2" data-layer="2" aria-pressed="false">Layer 2 — Summary</button>
+            <button class="layer-tab-btn"        id="ltab-3" data-layer="3" aria-pressed="false">Layer 3 — Full Detail</button>
+          </div>
+
+          <!-- Layer content rendered here -->
+          <div class="layer-content" id="layer-content">
+            <!-- Populated by JS -->
+          </div>
+
+          <div class="detail-actions" id="detail-actions">
+            <button class="btn-detail" id="detail-view-proof-btn">View Proof</button>
+            <button class="btn-detail" id="detail-accept-btn">Accept Axiom</button>
+            <button class="btn-detail primary" id="detail-run-hitl-btn">Run HITL Review</button>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /#page-2 -->
+
+    <!-- ── PAGE 3: Report & Export ── -->
+    <div class="page" id="page-3" role="tabpanel" aria-label="Report and export">
+      <div class="page-3-inner">
+
+        <h2 class="page-section-title">Audit Report</h2>
+        <p class="page-section-sub">Review, annotate, and export the deterministic audit object.</p>
+
+        <!-- Report metadata -->
+        <div class="report-meta-bar">
+          <div class="report-meta-item">Report ID: <strong id="report-id-val">—</strong></div>
+          <div class="report-meta-item">Trace: <strong id="report-trace-val">—</strong></div>
+          <div class="report-meta-item">Type: <strong id="report-type-val">—</strong></div>
+          <div class="report-meta-item">Engine: <strong id="report-engine-val">—</strong></div>
+          <div class="report-meta-item">Generated: <strong id="report-ts-val">—</strong></div>
+        </div>
+
+        <!-- Export buttons -->
+        <div class="report-export-btns">
+          <button class="btn-export btn-export-json"  id="export-json-btn">📄 Export JSON</button>
+          <button class="btn-export btn-export-pdf"   id="export-pdf-btn">📑 Export PDF</button>
+          <button class="btn-export btn-export-csv"   id="export-csv-btn">📊 Export CSV</button>
+          <button class="btn-export btn-export-print" id="print-report-btn">🖨 Print A4</button>
+        </div>
+
+        <!-- Report body -->
+        <div class="report-content" id="report-content">
+          <div class="report-empty">
+            <div style="font-size:48px;margin-bottom:12px">📋</div>
+            <div>No report generated yet.</div>
+            <div style="font-size:12px;margin-top:6px">Upload a file on Page 1 and complete analysis to generate a report.</div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /#page-3 -->
+
+  </div><!-- /#content-root -->
+
+  <!-- Page footer navigation -->
+  <div id="page-footer" role="navigation" aria-label="Page navigation footer">
+    <button class="footer-back-btn" id="footer-back-btn">← Back</button>
+    <span class="footer-page-label" id="footer-page-label">Page 1 of 3</span>
+    <button class="footer-next-btn" id="footer-next-btn">Continue to Analysis →</button>
+  </div>
+
+</div><!-- /#dashboard-root -->
+
+
+<!-- HITL Modal -->
+<div class="modal-backdrop" id="hitl-modal" role="dialog" aria-modal="true"
+     aria-labelledby="hitl-modal-title" aria-describedby="hitl-summary-bar">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="hitl-modal-title">● HUMAN-IN-THE-LOOP VERIFICATION</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="hitl-timer-badge" id="hitl-countdown">300s</span>
+        <button class="modal-close" id="hitl-close-btn" aria-label="Close HITL modal">✕</button>
+      </div>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="hitl-summary-bar" id="hitl-summary-bar">
+      <div class="hitl-sum-item">File: <strong id="hitl-filename">—</strong></div>
+      <div class="hitl-sum-item">Domain: <strong id="hitl-domain">—</strong></div>
+      <div class="hitl-sum-item">Confidence: <strong id="hitl-confidence">—</strong></div>
+      <div class="hitl-sum-item">Trace: <strong id="hitl-trace">—</strong></div>
+    </div>
+
+    <!-- Data table -->
+    <table class="hitl-table" id="hitl-table" aria-label="Extracted fields for review">
+      <thead>
+        <tr>
+          <th>FIELD</th>
+          <th>EXTRACTED VALUE</th>
+          <th>CONFIDENCE</th>
+          <th>SOURCE</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody id="hitl-tbody"></tbody>
+    </table>
+
+    <!-- Edit panel -->
+    <div class="hitl-edit-panel" id="hitl-edit-panel">
+      <div class="hitl-edit-title" id="hitl-edit-field-title">Editing: —</div>
+      <input class="hitl-input" id="hitl-edit-value" type="text" placeholder="Corrected value...">
+      <input class="hitl-input" id="hitl-edit-reason" type="text" placeholder="Reason for correction (optional)...">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal-secondary" id="hitl-cancel-btn">CANCEL</button>
+      <button class="btn-modal-primary"   id="hitl-confirm-btn">✓ CONFIRM &amp; CONTINUE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     LANGUAGE MODAL
+════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="lang-modal" role="dialog" aria-modal="true"
+     aria-labelledby="lang-modal-title">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="lang-modal-title">🌐 INTERFACE LANGUAGE</span>
+      <button class="modal-close" id="lang-close-btn" aria-label="Close language selector">✕</button>
+    </div>
+    <p style="font-size:12px;color:var(--dk-muted);margin-bottom:4px">
+      Select the interface display language. Gold-bordered languages are certified for this release.
+    </p>
+    <div class="lang-grid" id="lang-grid" role="listbox" aria-label="Available languages">
+      <!-- Populated by JS -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-secondary" id="lang-close-btn2">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite" aria-atomic="false"></div>
+
+<!-- MathJax for LaTeX rendering -->
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+    startup: { typeset: false }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

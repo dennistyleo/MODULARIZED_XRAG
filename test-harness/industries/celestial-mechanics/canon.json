@@ -1,0 +1,34 @@
+{
+  "industry": "celestial-mechanics",
+  "version": "1.0",
+  "source": "Newton→Einstein (Section I)",
+  "axioms": [
+    {
+      "id": "NEWTON_GRAV_01",
+      "name": "Universal Gravitation",
+      "expression_latex": "F = G \\frac{m_1 m_2}{r^2}",
+      "expression_pddl": "(= (gravitational-force ?b1 ?b2) (* G (* (mass ?b1) (mass ?b2)) (/ 1 (* (distance ?b1 ?b2) (distance ?b1 ?b2)))))",
+      "status": "CANONICAL",
+      "domain": "Celestial Mechanics",
+      "variables": ["G", "m1", "m2", "r"]
+    },
+    {
+      "id": "NEWTON_SECOND_03",
+      "name": "Newton's Second Law",
+      "expression_latex": "F = m \\frac{dv}{dt}",
+      "expression_pddl": "(= (net-force ?b) (* (mass ?b) (acceleration ?b)))",
+      "status": "CANONICAL",
+      "domain": "Celestial Mechanics",
+      "variables": ["F", "m", "v", "t"]
+    },
+    {
+      "id": "CENTRIPETAL_04",
+      "name": "Centripetal Force",
+      "expression_latex": "F_c = m \\omega^2 r",
+      "expression_pddl": "(= (centripetal-force ?b) (* (mass ?b) (* (angular-velocity ?b) (* (angular-velocity ?b) (radius ?b)))))",
+      "status": "CANONICAL",
+      "domain": "Celestial Mechanics",
+      "variables": ["m", "omega", "r"]
+    }
+  ]
+}

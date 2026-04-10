@@ -1,0 +1,187 @@
+// =============================================================================
+// Module  : axi_slave_interface.v  | Version: 1.1.0
+// Purpose : AXI4-Lite register file (0x0000–0x7FFF) + AXI4-Stream passthrough
+// Ref     : AI-PMC Spec Section 3 register map
+// =============================================================================
+`timescale 1ns/1ps
+`default_nettype none
+
+module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
+    input  wire        clk, rst_n,
+    // AXI4-Lite
+    input  wire [31:0] s_axi_awaddr,  input  wire s_axi_awvalid, output reg  s_axi_awready,
+    input  wire [31:0] s_axi_wdata,   input  wire [3:0] s_axi_wstrb,
+    input  wire        s_axi_wvalid,  output reg  s_axi_wready,
+    output reg  [1:0]  s_axi_bresp,   output reg  s_axi_bvalid,  input  wire s_axi_bready,
+    input  wire [31:0] s_axi_araddr,  input  wire s_axi_arvalid, output reg  s_axi_arready,
+    output reg  [31:0] s_axi_rdata,   output reg  [1:0] s_axi_rresp,
+    output reg         s_axi_rvalid,  input  wire s_axi_rready,
+    // AXI4-Stream
+    input  wire [63:0] s_axis_tdata,  input  wire s_axis_tvalid, output wire s_axis_tready,
+    output wire [63:0] m_axis_tdata,  output wire m_axis_tvalid, input  wire m_axis_tready,
+    // ── Read-only status inputs from engines ──────────────────────────────────
+    input  wire [31:0] prime_count, semantic_dist, error_code,
+    input  wire [63:0] runtime_cycles,
+    input  wire [31:0] global_hazard, stability_index,
+    input  wire [1:0]  upasl_decision,
+    input  wire [31:0] invariant_violations,
+    input  wire [2:0]  gov_state, seq_state,
+    input  wire [7:0]  current_seq_step,
+    input  wire [31:0] gov_fault_cause,
+    input  wire [9:0]  ev_fifo_count,
+    input  wire        atp_pass,
+    input  wire [31:0] atp_fail_reason,
+    input  wire [63:0] feature_vector_lsw,
+    // ── Writable config outputs to engines ────────────────────────────────────
+    output reg  [31:0] control_reg,
+    output reg  [31:0] axiom_base_addr, result_base_addr, target_addr,
+    output reg  [31:0] t_max, t_dot_max, h_t_min,
+    output reg  [31:0] sigma_max, sigma_dot_max, d_m_max,
+    output reg  [31:0] v_min, i_dot_max, soc_min, p_margin_min,
+    output reg  [31:0] d_max, d_dot_max, r_see_max,
+    output reg  [31:0] tau_s_max, pi_max, l_max, j_max,
+    output reg  [31:0] gov_profile_id, gov_timeout_ms, gov_thresholds,
+    output reg  [31:0] gov_hysteresis, gov_allowed_actions,
+    output wire        seq_start_cmd, seq_stop_cmd, seq_hold_cmd, seq_resume_cmd,
+    output reg  [7:0]  atp_test_id,
+    output wire        atp_inject_cmd, atp_check_cmd,
+    output wire        ml_capture
+);
+
+    // ── Flat register file: 64 words × 32 bit ────────────────────────────────
+    // Indices: 0x00–0x0F core | 0x40–0x4F gov | 0x80–0x8F ev | 0xC0 gov_fsm
+    //          0x100 seq | 0x140 atp | 0x180 upasl | 0x1C0 feature
+    reg [31:0] RF [0:255];  // word-addressed shadow register file
+
+    // ── AXI decode helpers ────────────────────────────────────────────────────
+    wire [12:0] wr_reg = s_axi_awaddr[14:2];  // word index from byte address
+    wire [12:0] rd_reg = s_axi_araddr[14:2];
+
+    // ── Write channel ─────────────────────────────────────────────────────────
+    reg aw_pend, w_pend;
+    reg [12:0] aw_addr_r;
+
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            s_axi_awready <= 0; s_axi_wready <= 0; s_axi_bvalid <= 0;
+            aw_pend <= 0; w_pend <= 0; aw_addr_r <= 0;
+            control_reg <= 0;
+            axiom_base_addr <= 0; result_base_addr <= 0; target_addr <= 0;
+            t_max <= 32'd1200; t_dot_max <= 32'd50; h_t_min <= 32'd20;
+            sigma_max <= 32'd1000; sigma_dot_max <= 32'd100; d_m_max <= 32'd50;
+            v_min <= 32'd3000; i_dot_max <= 32'd2000; soc_min <= 32'd200; p_margin_min <= 32'd500;
+            d_max <= 32'd100; d_dot_max <= 32'd10; r_see_max <= 32'd5;
+            tau_s_max <= 32'd3200; pi_max <= 32'd4000; l_max <= 32'd1000; j_max <= 32'd200;
+            gov_profile_id <= 0; gov_timeout_ms <= 32'd1000;
+            gov_thresholds <= 0; gov_hysteresis <= 0; gov_allowed_actions <= 32'hFF;
+            atp_test_id <= 0;
+        end else begin
+            // Accept AW
+            if (s_axi_awvalid && !aw_pend) begin s_axi_awready <= 1; aw_pend <= 1; aw_addr_r <= s_axi_awaddr[14:2]; end
+            else s_axi_awready <= 0;
+            // Accept W
+            if (s_axi_wvalid && !w_pend)  begin s_axi_wready  <= 1; w_pend  <= 1; end
+            else s_axi_wready <= 0;
+            // Commit write when both pending
+            if (aw_pend && w_pend) begin
+                RF[aw_addr_r[7:0]] <= s_axi_wdata;
+                // Shadow decode
+                case ({aw_addr_r[12:8], 3'b0})
+                    13'h000: case (aw_addr_r[4:0])
+                        5'd0: ; // STATUS RO
+                        5'd1: control_reg <= s_axi_wdata;
+                        5'd8: axiom_base_addr <= s_axi_wdata;
+                        5'd9: result_base_addr <= s_axi_wdata;
+                        5'd10: target_addr <= s_axi_wdata;
+                        default:;
+                    endcase
+                    13'h040: case (aw_addr_r[3:0])  // 0x1000 governance config
+                        4'd0: gov_profile_id <= s_axi_wdata;
+                        4'd1: gov_timeout_ms <= s_axi_wdata;
+                        4'd2: gov_thresholds <= s_axi_wdata;
+                        4'd3: gov_hysteresis <= s_axi_wdata;
+                        4'd4: gov_allowed_actions <= s_axi_wdata;
+                        default:;
+                    endcase
+                    13'h050: case (aw_addr_r[2:0])  // 0x4000 sequencing
+                        3'd1: RF[8'hd0] <= s_axi_wdata; // SEQ_CMD
+                        3'd3: RF[8'hd3] <= s_axi_wdata; // SEQ_TIMEOUT_MS
+                        default:;
+                    endcase
+                    13'h054: if (aw_addr_r[2:0]==3'd0) atp_test_id <= s_axi_wdata[7:0]; // 0x5000
+                    default:;
+                endcase
+                aw_pend <= 0; w_pend <= 0; s_axi_bvalid <= 1; s_axi_bresp <= 2'b00;
+            end else if (s_axi_bvalid && s_axi_bready) s_axi_bvalid <= 0;
+        end
+    end
+
+    // ── Read channel ──────────────────────────────────────────────────────────
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin s_axi_arready <= 0; s_axi_rvalid <= 0; s_axi_rdata <= 0; end
+        else begin
+            s_axi_arready <= s_axi_arvalid;
+            if (s_axi_arvalid) begin
+                s_axi_rvalid <= 1; s_axi_rresp <= 2'b00;
+                case ({s_axi_araddr[14:12], 9'b0} | {s_axi_araddr[14:12]})
+                    default: case (s_axi_araddr[14:2])
+                        // 0x0000 core
+                        13'h000: s_axi_rdata <= {29'd0, ~(|prime_count), decomp_done, 1'b0};
+                        13'h001: s_axi_rdata <= control_reg;
+                        13'h004: s_axi_rdata <= prime_count;
+                        13'h005: s_axi_rdata <= semantic_dist;
+                        13'h006: s_axi_rdata <= runtime_cycles[31:0];
+                        13'h007: s_axi_rdata <= runtime_cycles[63:32];
+                        13'h00B: s_axi_rdata <= error_code;
+                        // 0x1000 governance config
+                        13'h400: s_axi_rdata <= gov_profile_id;
+                        13'h401: s_axi_rdata <= gov_timeout_ms;
+                        13'h402: s_axi_rdata <= gov_thresholds;
+                        13'h403: s_axi_rdata <= gov_hysteresis;
+                        13'h404: s_axi_rdata <= gov_allowed_actions;
+                        // 0x2000 evidence FIFO
+                        13'h801: s_axi_rdata <= {22'd0, ev_fifo_count};
+                        // 0x3000 governance FSM
+                        13'hC00: s_axi_rdata <= {29'd0, gov_state};
+                        13'hC01: s_axi_rdata <= gov_fault_cause;
+                        // 0x4000 sequencing
+                        13'h1000: s_axi_rdata <= {29'd0, seq_state};
+                        13'h1002: s_axi_rdata <= {24'd0, current_seq_step};
+                        // 0x5000 ATP
+                        13'h1401: s_axi_rdata <= {31'd0, atp_pass};
+                        13'h1402: s_axi_rdata <= atp_fail_reason;
+                        // 0x6000 UPASL
+                        13'h1806: s_axi_rdata <= global_hazard;
+                        13'h1807: s_axi_rdata <= stability_index;
+                        13'h1808: s_axi_rdata <= {30'd0, upasl_decision};
+                        // 0x7000 feature extractor
+                        13'h1C00: s_axi_rdata <= feature_vector_lsw[31:0];
+                        13'h1C01: s_axi_rdata <= feature_vector_lsw[63:32];
+                        default: s_axi_rdata <= 32'hDEAD_BEEF;
+                    endcase
+                endcase
+            end else if (s_axi_rready) s_axi_rvalid <= 0;
+        end
+    end
+
+    // ── AXI-Stream passthrough ─────────────────────────────────────────────────
+    assign s_axis_tready = m_axis_tready;
+    assign m_axis_tdata  = s_axis_tdata;
+    assign m_axis_tvalid = s_axis_tvalid;
+
+    // ── Command pulse outputs (single-cycle strobes from register writes) ──────
+    assign seq_start_cmd = (aw_pend && w_pend && s_axi_wdata[0] &&
+                            s_axi_awaddr[14:2] == 13'h1001);
+    assign seq_stop_cmd  = (aw_pend && w_pend && s_axi_wdata[1] &&
+                            s_axi_awaddr[14:2] == 13'h1001);
+    assign seq_hold_cmd  = (aw_pend && w_pend && s_axi_wdata[2] &&
+                            s_axi_awaddr[14:2] == 13'h1001);
+    assign seq_resume_cmd= (aw_pend && w_pend && s_axi_wdata[3] &&
+                            s_axi_awaddr[14:2] == 13'h1001);
+    assign atp_inject_cmd= (aw_pend && w_pend && s_axi_awaddr[14:2] == 13'h1400);
+    assign atp_check_cmd = (aw_pend && w_pend && s_axi_awaddr[14:2] == 13'h1401);
+    assign ml_capture    = (aw_pend && w_pend && s_axi_wdata[4] &&
+                            s_axi_awaddr[14:2] == 13'h001);
+
+endmodule
+`default_nettype wire

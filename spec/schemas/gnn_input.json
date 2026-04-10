@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "title": "GNN Module Input Schema",
+  "version": "1.0.0",
+  "description": "Input schema for the GNN module — received from DATA_EXTRACTED BUS event",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "minItems": 2,
+      "description": "Nodes to form the 3D shape",
+      "items": {
+        "type": "object",
+        "required": ["id", "x", "y", "z"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^N[0-9]+$"
+          },
+          "x": {"type": "number"},
+          "y": {"type": "number"},
+          "z": {"type": "number"}
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Edges defining the 3D topology",
+      "items": {
+        "type": "object",
+        "required": ["source", "target"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {"type": "string", "pattern": "^N[0-9]+$"},
+          "target": {"type": "string", "pattern": "^N[0-9]+$"}
+        }
+      }
+    },
+    "inject_drift": {
+      "type": "boolean",
+      "default": false,
+      "description": "Test mode: artificially inject drift at drift_location"
+    },
+    "drift_location": {
+      "type": ["string", "null"],
+      "pattern": "^N[0-9]+$",
+      "description": "Required if inject_drift is true"
+    },
+    "rotate_time": {
+      "type": "string",
+      "enum": ["FORWARD", "BACKWARD", "NONE"],
+      "default": "NONE",
+      "description": "Time rotation direction for RCA (BACKWARD) or prediction (FORWARD)"
+    },
+    "rotate_cycles": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000,
+      "default": 10,
+      "description": "Number of time cycles to rotate"
+    },
+    "ideal_shape": {
+      "type": ["object", "null"],
+      "description": "Ideal shape from World Model for comparison. Null if not yet received.",
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "x", "y", "z"],
+            "properties": {
+              "id": {"type": "string"},
+              "x":  {"type": "number"},
+              "y":  {"type": "number"},
+              "z":  {"type": "number"}
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "target"],
+            "properties": {
+              "source": {"type": "string"},
+              "target": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_[a-z0-9]{4}$"
+    }
+  }
+}

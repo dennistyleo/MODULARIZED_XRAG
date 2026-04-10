@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "title": "RAG Module Output Schema",
+  "version": "1.0.0",
+  "description": "Output schema for the DATA_EXTRACTED BUS event payload",
+  "type": "object",
+  "required": ["domain", "nodes", "edges", "assessment", "fingerprint", "trace_id"],
+  "additionalProperties": false,
+  "properties": {
+    "domain": {
+      "type": "string",
+      "enum": ["CONTRACT", "FINANCIAL", "TECHNICAL", "AEROSPACE", "GENERAL"],
+      "description": "Domain classification of extracted data"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "description": "Extracted data nodes",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "value", "confidence", "editable", "suspicious"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^N[0-9]+$",
+            "description": "Node ID (e.g., N1, N7)"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "value": {
+            "type": ["string", "number", "null"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "multipleOf": 0.01
+          },
+          "editable": {
+            "type": "boolean",
+            "description": "Whether the user can edit this field in HITL"
+          },
+          "suspicious": {
+            "type": "boolean",
+            "description": "True if confidence < 0.60"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "description": "Causal edges between nodes",
+      "items": {
+        "type": "object",
+        "required": ["source", "target", "causal_strength"],
+        "additionalProperties": false,
+        "properties": {
+          "source": {"type": "string", "pattern": "^N[0-9]+$"},
+          "target": {"type": "string", "pattern": "^N[0-9]+$"},
+          "causal_strength": {"type": "number", "minimum": 0.0, "maximum": 1.0}
+        }
+      }
+    },
+    "assessment": {
+      "type": "object",
+      "required": ["conf", "tier", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "conf": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "multipleOf": 0.01
+        },
+        "tier": {
+          "type": "integer",
+          "enum": [1, 2, 3]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "fingerprint": {
+      "type": "object",
+      "required": ["file_type", "domain_hints", "data_types", "statistical_properties"],
+      "properties": {
+        "file_type": {"type": "string"},
+        "domain_hints": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "data_types": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "statistical_properties": {
+          "type": "object",
+          "properties": {
+            "stationarity": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "continuity":   {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "snr":          {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "seasonality":  {"type": "number", "minimum": 0.0, "maximum": 1.0}
+          }
+        },
+        "extracted_fields": {"type": "object"}
+      }
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_[a-z0-9]{4}$",
+      "description": "Format: YYYYMMDD_HHMMSS_xxxx"
+    }
+  }
+}

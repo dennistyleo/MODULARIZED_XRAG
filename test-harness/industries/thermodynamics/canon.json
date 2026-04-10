@@ -1,0 +1,34 @@
+{
+  "industry": "thermodynamics",
+  "version": "1.0",
+  "source": "Newton→Einstein (Section J)",
+  "axioms": [
+    {
+      "id": "CLAUSIUS_2ND_01",
+      "name": "Clausius Statement (Second Law)",
+      "expression_latex": "\\Delta S \\geq \\frac{Q}{T}",
+      "expression_pddl": "(>= (entropy-change ?sys) (/ (heat-transfer ?sys) (temperature ?sys)))",
+      "status": "CANONICAL",
+      "domain": "Thermodynamics",
+      "variables": ["S", "Q", "T"]
+    },
+    {
+      "id": "CARNOT_02",
+      "name": "Carnot Efficiency",
+      "expression_latex": "\\eta = 1 - \\frac{T_C}{T_H}",
+      "expression_pddl": "(= (efficiency ?engine) (- 1 (/ (cold-temp ?engine) (hot-temp ?engine))))",
+      "status": "CANONICAL",
+      "domain": "Thermodynamics",
+      "variables": ["eta", "T_C", "T_H"]
+    },
+    {
+      "id": "STEFAN_BOLTZMANN_03",
+      "name": "Stefan–Boltzmann Radiation Law",
+      "expression_latex": "P = \\sigma A T^4",
+      "expression_pddl": "(= (radiated-power ?body) (* sigma (* (area ?body) (expt (temperature ?body) 4))))",
+      "status": "CANONICAL",
+      "domain": "Thermodynamics",
+      "variables": ["P", "sigma", "A", "T"]
+    }
+  ]
+}

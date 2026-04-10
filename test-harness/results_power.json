@@ -1,0 +1,302 @@
+{
+  "timestamp": "2026-04-11T04:00:00Z",
+  "board_id": "XR-PMC-V1-TEST",
+  "overall_pass": false,
+  "axiom_results": [
+    {
+      "axiom_id": "PWR_EFF_01",
+      "axiom_name": "Power Efficiency Constraint",
+      "passed": false,
+      "violation_count": 3,
+      "violations": [
+        {
+          "rail": 1,
+          "timestamp_us": 1000,
+          "efficiency": 0.83,
+          "threshold": 0.85,
+          "load_ma": 5000,
+          "light_load": false,
+          "gap": 0.02
+        },
+        {
+          "rail": 2,
+          "timestamp_us": 1000,
+          "efficiency": 0.78,
+          "threshold": 0.85,
+          "load_ma": 2000,
+          "light_load": false,
+          "gap": 0.07
+        },
+        {
+          "rail": 3,
+          "timestamp_us": 1000,
+          "efficiency": 0.42,
+          "threshold": 0.7,
+          "load_ma": 30,
+          "light_load": true,
+          "gap": 0.28
+        }
+      ],
+      "evidence": [
+        {
+          "event_id": "EFF_MEASURED",
+          "payload": {
+            "rail": 0,
+            "efficiency": 0.88
+          }
+        },
+        {
+          "event_id": "EFF_DEGRADED",
+          "payload": {
+            "rail": 1,
+            "timestamp_us": 1000,
+            "efficiency": 0.83,
+            "threshold": 0.85,
+            "load_ma": 5000,
+            "light_load": false,
+            "gap": 0.02
+          }
+        },
+        {
+          "event_id": "EFF_DEGRADED",
+          "payload": {
+            "rail": 2,
+            "timestamp_us": 1000,
+            "efficiency": 0.78,
+            "threshold": 0.85,
+            "load_ma": 2000,
+            "light_load": false,
+            "gap": 0.07
+          }
+        },
+        {
+          "event_id": "EFF_DEGRADED",
+          "payload": {
+            "rail": 3,
+            "timestamp_us": 1000,
+            "efficiency": 0.42,
+            "threshold": 0.7,
+            "load_ma": 30,
+            "light_load": true,
+            "gap": 0.28
+          }
+        }
+      ]
+    },
+    {
+      "axiom_id": "PWR_SEQ_02",
+      "axiom_name": "Deterministic Power Sequencing",
+      "passed": false,
+      "violation_count": 1,
+      "violations": [
+        {
+          "rail": 2,
+          "arrival_ms": 25.0,
+          "timeout_ms": 10,
+          "excess_ms": 15.0
+        }
+      ],
+      "evidence": [
+        {
+          "event_id": "SEQ_STEP",
+          "payload": {
+            "rail": 0,
+            "pgood_ms": 8.2
+          }
+        },
+        {
+          "event_id": "SEQ_STEP",
+          "payload": {
+            "rail": 1,
+            "pgood_ms": 9.1
+          }
+        },
+        {
+          "event_id": "PGOOD_TIMEOUT",
+          "payload": {
+            "rail": 2,
+            "arrival_ms": 25.0,
+            "timeout_ms": 10,
+            "excess_ms": 15.0
+          }
+        },
+        {
+          "event_id": "SEQ_STEP",
+          "payload": {
+            "rail": 3,
+            "pgood_ms": 7.5
+          }
+        }
+      ]
+    },
+    {
+      "axiom_id": "PWR_RIPPLE_03",
+      "axiom_name": "Ripple and Noise Constraint",
+      "passed": false,
+      "violation_count": 1,
+      "violations": [
+        {
+          "rail": 2,
+          "ripple_mv": 45.0,
+          "max_allowed_mv": 30,
+          "excess_mv": 15.0
+        }
+      ],
+      "evidence": [
+        {
+          "event_id": "RIPPLE_MEASURED",
+          "payload": {
+            "rail": 0,
+            "ripple_pp_mv": 25.0
+          }
+        },
+        {
+          "event_id": "RIPPLE_MEASURED",
+          "payload": {
+            "rail": 1,
+            "ripple_pp_mv": 28.0
+          }
+        },
+        {
+          "event_id": "RIPPLE_EXCEEDED",
+          "payload": {
+            "rail": 2,
+            "ripple_mv": 45.0,
+            "max_allowed_mv": 30,
+            "excess_mv": 15.0
+          }
+        },
+        {
+          "event_id": "RIPPLE_MEASURED",
+          "payload": {
+            "rail": 3,
+            "ripple_pp_mv": 18.0
+          }
+        }
+      ]
+    },
+    {
+      "axiom_id": "PWR_CONS_04",
+      "axiom_name": "Power Consumption Budget",
+      "passed": true,
+      "violation_count": 0,
+      "violations": [],
+      "evidence": [
+        {
+          "event_id": "POWER_MEASURED",
+          "payload": {
+            "total_w": 25.75
+          }
+        }
+      ]
+    },
+    {
+      "axiom_id": "PWR_INT_05",
+      "axiom_name": "Power Distribution Network Integrity",
+      "passed": false,
+      "violation_count": 2,
+      "violations": [
+        {
+          "frequency_hz": 10000000.0,
+          "impedance_ohms": 0.035,
+          "target_ohms": 0.01,
+          "excess_mohm": 25.0
+        },
+        {
+          "frequency_hz": 50000000.0,
+          "impedance_ohms": 0.012,
+          "target_ohms": 0.01,
+          "excess_mohm": 2.0
+        }
+      ],
+      "evidence": [
+        {
+          "event_id": "PDN_IMPEDANCE_MEASURED",
+          "payload": {
+            "frequency_hz": 1000,
+            "z_ohms": 0.003
+          }
+        },
+        {
+          "event_id": "PDN_IMPEDANCE_MEASURED",
+          "payload": {
+            "frequency_hz": 100000,
+            "z_ohms": 0.008
+          }
+        },
+        {
+          "event_id": "PDN_RESONANCE_DETECTED",
+          "payload": {
+            "frequency_hz": 10000000.0,
+            "impedance_ohms": 0.035,
+            "target_ohms": 0.01,
+            "excess_mohm": 25.0
+          }
+        },
+        {
+          "event_id": "PDN_RESONANCE_DETECTED",
+          "payload": {
+            "frequency_hz": 50000000.0,
+            "impedance_ohms": 0.012,
+            "target_ohms": 0.01,
+            "excess_mohm": 2.0
+          }
+        }
+      ]
+    },
+    {
+      "axiom_id": "PWR_TRAN_06",
+      "axiom_name": "Transient Response and Minimum Load",
+      "passed": false,
+      "violation_count": 3,
+      "violations": [
+        {
+          "type": "droop",
+          "measured_mv": 180.0,
+          "max_mv": 100
+        },
+        {
+          "rail": 2,
+          "load_ma": 10,
+          "min_required_ma": 100
+        },
+        {
+          "rail": 3,
+          "load_ma": 30,
+          "min_required_ma": 50
+        }
+      ],
+      "evidence": [
+        {
+          "event_id": "TRANSIENT_DROOP",
+          "payload": {
+            "type": "droop",
+            "measured_mv": 180.0,
+            "max_mv": 100
+          }
+        },
+        {
+          "event_id": "MIN_LOAD_VIOLATION",
+          "payload": {
+            "rail": 2,
+            "load_ma": 10,
+            "min_required_ma": 100
+          }
+        },
+        {
+          "event_id": "MIN_LOAD_VIOLATION",
+          "payload": {
+            "rail": 3,
+            "load_ma": 30,
+            "min_required_ma": 50
+          }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "passed": 1,
+    "failed": 5
+  }
+}

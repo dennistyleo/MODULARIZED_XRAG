@@ -1,0 +1,80 @@
+{
+  "industry": "power-quality",
+  "version": "1.0",
+  "source": "XR-PMC Hardware Spec — Power Quality Requirements",
+  "description": "Six power quality axioms covering efficiency, sequencing, ripple, consumption, PDN integrity, and transient response",
+  "axioms": [
+    {
+      "id": "PWR_EFF_01",
+      "name": "Power Efficiency Constraint",
+      "expression_latex": "\\eta = \\frac{P_{out}}{P_{out} + P_{loss}} \\geq \\eta_{min}",
+      "expression_pddl": "(:action measure-efficiency :parameters (?rail - rail) :precondition (and (load-current ?i) (input-voltage ?vin) (output-voltage ?vout)) :effect (and (efficiency (>= ?eta 0.85)) (emit EFF_MEASURED ?eta)))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "power-efficiency",
+      "domain": "Power Management",
+      "variables": ["eta", "P_out", "P_loss", "eta_min"],
+      "thresholds": { "eta_min_full_load": 0.85, "eta_min_light_load": 0.70 }
+    },
+    {
+      "id": "PWR_SEQ_02",
+      "name": "Deterministic Power Sequencing",
+      "expression_latex": "t_{rise}(rail_i) + t_{delay} \\leq t_{rise}(rail_{i+1}) \\land t_{PGOOD} \\leq 10\\text{ms}",
+      "expression_pddl": "(:action sequence-rail :parameters (?rail - rail ?prev-rail - rail) :precondition (and (stable ?prev-rail) (not (fault ?rail))) :effect (and (enabled ?rail) (after (<= (now) pgood_timeout_ms) (stable ?rail))))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "power-sequencing",
+      "domain": "Power Management",
+      "variables": ["t_rise", "t_delay", "t_PGOOD"],
+      "thresholds": { "pgood_timeout_ms": 10, "inter_rail_delay_ms": 5, "ramp_ms_min": 0.5, "ramp_ms_max": 20 }
+    },
+    {
+      "id": "PWR_RIPPLE_03",
+      "name": "Ripple and Noise Constraint",
+      "expression_latex": "V_{ripple(p-p)} \\leq 30\\text{mV} \\land V_{noise(rms)} \\leq 10\\text{mV}",
+      "expression_pddl": "(:action measure-ripple :parameters (?rail - rail ?load - current) :precondition (and (active ?rail) (load-stable ?load)) :effect (and (ripple (<= ?vpp 0.03)) (emit RIPPLE_MEASURED ?vpp ?vrms)))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "signal-integrity",
+      "domain": "Power Integrity",
+      "variables": ["V_ripple", "V_noise_rms"],
+      "thresholds": { "ripple_pp_mv_max": 30, "noise_rms_mv_max": 10, "frequency_band": "100kHz-100MHz" }
+    },
+    {
+      "id": "PWR_CONS_04",
+      "name": "Power Consumption Budget",
+      "expression_latex": "P_{total} = \\sum_{i} (V_i \\times I_i) \\leq P_{budget} = 50\\text{W}",
+      "expression_pddl": "(:action check-budget :precondition (forall ?rail (consuming ?rail)) :effect (budget-ok (<= (sum (power ?rail)) budget)))",
+      "status": "CANONICAL",
+      "class": "governance",
+      "subsystem": "power-budgeting",
+      "domain": "Power Management",
+      "variables": ["P_total", "V_i", "I_i", "P_budget"],
+      "thresholds": { "total_w_max": 50.0, "peak_w_max": 75.0, "peak_duration_ms": 10 }
+    },
+    {
+      "id": "PWR_INT_05",
+      "name": "Power Distribution Network Integrity",
+      "expression_latex": "Z_{PDN}(f) = \\frac{V_{noise}(f)}{I_{load}(f)} \\leq Z_{target}(f) = 10\\text{m}\\Omega",
+      "expression_pddl": "(:action measure-pdn :parameters (?freq - frequency) :precondition (active-network) :effect (and (impedance (<= ?z z_target)) (emit PDN_IMPEDANCE_MEASURED ?z ?freq)))",
+      "status": "CANONICAL",
+      "class": "physical",
+      "subsystem": "power-distribution-network",
+      "domain": "Power Integrity",
+      "variables": ["Z_PDN", "f", "V_noise", "I_load"],
+      "thresholds": { "z_target_ohms": 0.01, "frequency_range": "1kHz-100MHz" }
+    },
+    {
+      "id": "PWR_TRAN_06",
+      "name": "Transient Response and Minimum Load",
+      "expression_latex": "\\Delta V_{droop} \\leq 100\\text{mV} \\land V_{overshoot} \\leq 100\\text{mV} \\land I_{load} \\geq 50\\text{mA}",
+      "expression_pddl": "(:action apply-load-step :parameters (?rail - rail ?delta-i - current) :precondition (and (active ?rail) (>= (load ?rail) min_load)) :effect (and (droop (<= ?vdroop 0.1)) (after (<= settle_us 50) (stable ?rail))))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "load-response",
+      "domain": "Power Management",
+      "variables": ["delta_V_droop", "V_overshoot", "I_load", "I_min"],
+      "thresholds": { "droop_max_mv": 100, "overshoot_max_mv": 100, "min_load_ma": 50, "settling_time_us": 50 }
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "title": "RAG Module Input Schema",
+  "version": "1.0.0",
+  "description": "Input schema for the RAG module extract_structured_data() call",
+  "type": "object",
+  "required": ["source"],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["file_path"],
+          "additionalProperties": false,
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "pattern": "^.*\\.(pdf|csv|json)$",
+              "description": "Path to the file to extract. Must be pdf, csv, or json."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 10000,
+              "description": "Raw text to extract structured data from."
+            }
+          }
+        }
+      ]
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional RAG command to override default extraction behavior",
+      "properties": {
+        "domain_command": {
+          "type": "string",
+          "description": "Tells RAG what kind of analysis to perform"
+        },
+        "extract_command": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "strict": {"type": "boolean", "default": false},
+            "fallback": {"type": "string", "enum": ["reject", "partial"]}
+          }
+        },
+        "evaluation_command": {
+          "type": "string",
+          "description": "Specifies which rules/axioms to apply during evaluation"
+        },
+        "output_command": {
+          "type": "string",
+          "description": "Specifies the output format and level of detail"
+        },
+        "confidence_threshold": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "description": "If set, reject file if any field confidence falls below this value"
+        },
+        "on_low_confidence": {
+          "type": "string",
+          "enum": ["reject", "hitl"],
+          "default": "hitl",
+          "description": "Action to take when confidence is below threshold"
+        }
+      }
+    }
+  }
+}

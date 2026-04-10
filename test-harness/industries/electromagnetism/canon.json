@@ -1,0 +1,34 @@
+{
+  "industry": "electromagnetism",
+  "version": "1.0",
+  "source": "AI Noether (Compton/Photoelectric)",
+  "axioms": [
+    {
+      "id": "MAXWELL_GAUSS_E_01",
+      "name": "Gauss's Law (Electric)",
+      "expression_latex": "\\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0}",
+      "expression_pddl": "(= (divergence-E ?region) (/ (charge-density ?region) epsilon0))",
+      "status": "CANONICAL",
+      "domain": "Electromagnetism",
+      "variables": ["E", "rho", "epsilon0"]
+    },
+    {
+      "id": "MAXWELL_FARADAY_02",
+      "name": "Faraday's Law",
+      "expression_latex": "\\nabla \\times \\mathbf{E} = -\\frac{\\partial \\mathbf{B}}{\\partial t}",
+      "expression_pddl": "(= (curl-E ?region) (negation (time-derivative (B-field ?region))))",
+      "status": "CANONICAL",
+      "domain": "Electromagnetism",
+      "variables": ["E", "B", "t"]
+    },
+    {
+      "id": "MAXWELL_AMPERE_03",
+      "name": "Ampère–Maxwell Law",
+      "expression_latex": "\\nabla \\times \\mathbf{B} = \\mu_0 \\mathbf{J} + \\mu_0 \\varepsilon_0 \\frac{\\partial \\mathbf{E}}{\\partial t}",
+      "expression_pddl": "(= (curl-B ?region) (+ (* mu0 (current-density ?region)) (* mu0 (* epsilon0 (time-derivative (E-field ?region))))))",
+      "status": "CANONICAL",
+      "domain": "Electromagnetism",
+      "variables": ["B", "mu0", "J", "epsilon0", "E", "t"]
+    }
+  ]
+}

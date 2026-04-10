@@ -1,0 +1,124 @@
+# RAG Module - Deterministic Test Points
+# Version: 1.0.0
+# Methodology: AI-Ready YAML test point format
+
+module: rag_module
+schema_ref: spec/schemas/rag_output.json
+
+test_points:
+
+  - id: "RAG_001"
+    name: "PDF contract extraction"
+    type: deterministic
+    setup:
+      - action: ensure_file
+        path: "fixtures/contract_pdf_001.pdf"
+    input:
+      source:
+        file_path: "fixtures/contract_pdf_001.pdf"
+    expected:
+      domain: "CONTRACT"
+      "nodes[0].id": {pattern: "^N[0-9]+$"}
+      "assessment.tier": 1
+      "assessment.conf": {operator: ">=", value: 0.85}
+    deterministic_check: "len(output['nodes']) >= 3"
+    performance:
+      max_duration_ms: 30000
+    serviceability:
+      logs_contains: "DATA_EXTRACTED"
+      trace_contains: "rag_module"
+    reliability:
+      run_count: 10
+      expected_success_rate: 1.0
+
+  - id: "RAG_002"
+    name: "CSV financial extraction"
+    type: deterministic
+    setup:
+      - action: ensure_file
+        path: "fixtures/financial_csv_001.csv"
+    input:
+      source:
+        file_path: "fixtures/financial_csv_001.csv"
+    expected:
+      domain: "FINANCIAL"
+      "assessment.conf": {operator: ">", value: 0.80}
+    deterministic_check: "any(n['name'] == 'revenue' for n in output['nodes'])"
+    performance:
+      max_duration_ms: 30000
+
+  - id: "RAG_003"
+    name: "Plain text contract extraction"
+    type: deterministic
+    input:
+      source:
+        text: "Contract ID: 12345, Amount: $25000, Date: 2024-01-15"
+    expected:
+      domain: "CONTRACT"
+      "nodes": {length: 3}
+      "nodes[0].id": "N1"
+    deterministic_check: "output['nodes'][0]['id'] == 'N1'"
+    performance:
+      max_duration_ms: 30000
+
+  - id: "RAG_004"
+    name: "Corrupted PDF returns E004"
+    type: error_handling
+    setup:
+      - action: ensure_file
+        path: "fixtures/corrupted_pdf_001.pdf"
+    input:
+      source:
+        file_path: "fixtures/corrupted_pdf_001.pdf"
+    expected_error:
+      error_code: "E004"
+    deterministic_check: "output.get('error_code') == 'E004'"
+    serviceability:
+      logs_contains: "E004"
+
+  - id: "RAG_005"
+    name: "Gemini API timeout triggers E002 and fallback"
+    type: timeout
+    setup:
+      - action: mock_gemini_delay
+        delay_seconds: 35
+    input:
+      source:
+        file_path: "fixtures/contract_pdf_001.pdf"
+    expected_error:
+      error_code: "E002"
+    performance:
+      max_duration_ms: 30000  # must respond within 30s via fallback
+    serviceability:
+      logs_contains: "E002"
+    reliability:
+      retry_count: 3
+
+  - id: "RAG_006"
+    name: "Strict mode rejects file below confidence threshold"
+    type: deterministic
+    input:
+      source:
+        file_path: "fixtures/low_confidence_pdf_001.pdf"
+      command:
+        confidence_threshold: 0.95
+        on_low_confidence: "reject"
+    expected_error:
+      error_code: "E004"
+    deterministic_check: "DATA_EXTRACTED event NOT emitted"
+
+  - id: "RAG_007"
+    name: "Data fingerprint stationarity on time-series"
+    type: deterministic
+    setup:
+      - action: ensure_file
+        path: "fixtures/aerospace_pdf_001.pdf"
+    input:
+      source:
+        file_path: "fixtures/aerospace_pdf_001.pdf"
+    expected:
+      "fingerprint.stationarity": {operator: ">=", value: 0.80}
+      "fingerprint.domain_hints": {not_empty: true}
+    deterministic_check: "output['fingerprint']['stationarity'] >= 0.80"
+    performance:
+      max_duration_ms: 30000

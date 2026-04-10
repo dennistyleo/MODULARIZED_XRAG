@@ -1,0 +1,78 @@
+{
+  "industry": "telemetry-interfaces",
+  "version": "1.0",
+  "source": "XR-PMC Hardware Spec — Interface & Telemetry Requirements",
+  "description": "10 telemetry interface axioms covering all physical/digital interfaces on the XR-PMC board",
+  "axioms": [
+    {
+      "id": "TEL_RED_01",
+      "name": "Active Load Current Sharing",
+      "expression_latex": "\\left|\\frac{I_{phase\\_i}}{I_{total}} - \\frac{1}{N}\\right| \\leq \\epsilon_{balance} = 5\\%",
+      "status": "CANONICAL", "class": "engineering", "subsystem": "redundant-power",
+      "domain": "Power Management", "variables": ["I_phase", "I_total", "N", "epsilon"]
+    },
+    {
+      "id": "TEL_RT_02",
+      "name": "Power Ride-Through",
+      "expression_latex": "V_{cap}(t) \\geq 0.8\\text{V} \\land t_{hold} \\geq 50\\text{ms}",
+      "status": "CANONICAL", "class": "engineering", "subsystem": "ride-through",
+      "domain": "Power Management", "variables": ["V_cap", "t_hold"]
+    },
+    {
+      "id": "TEL_PMBUS_03",
+      "name": "PMBus Telemetry Interface",
+      "expression_latex": "\\text{PMBus\\_CMD} \\rightarrow \\text{RESPONSE} \\land \\text{CRC\\_valid} \\land latency \\leq 1\\text{ms}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "pmbus",
+      "domain": "Digital Interface", "variables": ["CMD", "latency", "CRC"]
+    },
+    {
+      "id": "TEL_SMBUS_04",
+      "name": "SMBus System Management",
+      "expression_latex": "\\text{SMBus\\_ARBITRATION} \\rightarrow \\text{MASTER\\_SELECTED} \\land \\neg\\text{collision}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "smbus",
+      "domain": "Digital Interface", "variables": ["ARBITRATION", "MASTER", "PEC"]
+    },
+    {
+      "id": "TEL_UART_05",
+      "name": "UART Debug and JTAG Interface",
+      "expression_latex": "\\text{UART\\_RX} \\rightarrow \\text{FIFO\\_PUSH} \\land \\text{baud\\_match} \\land \\neg\\text{framing\\_error}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "debug",
+      "domain": "Digital Interface", "variables": ["baud", "framing", "FIFO"]
+    },
+    {
+      "id": "TEL_I2C_06",
+      "name": "I2C Sensor Interface",
+      "expression_latex": "\\text{I2C\\_START} \\rightarrow \\text{ADDRESS\\_MATCH} \\rightarrow \\text{ACK} \\rightarrow \\text{DATA} \\rightarrow \\text{STOP}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "i2c",
+      "domain": "Digital Interface", "variables": ["address", "ACK", "data"]
+    },
+    {
+      "id": "TEL_I3C_07",
+      "name": "I3C High-Speed Sensor Bus",
+      "expression_latex": "\\text{I3C\\_CCC} \\rightarrow \\text{device\\_enumeration} \\land \\text{in\\_band\\_interrupt\\_support}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "i3c",
+      "domain": "Digital Interface", "variables": ["CCC", "IBI", "address"]
+    },
+    {
+      "id": "TEL_SERDES_08",
+      "name": "SERDES High-Speed Data Integrity",
+      "expression_latex": "\\text{BER} \\leq 10^{-12} \\land \\text{eye\\_height} \\geq 100\\text{mV} \\land \\text{eye\\_width} \\geq 0.5\\text{UI}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "serdes",
+      "domain": "Digital Interface", "variables": ["BER", "eye_height", "eye_width", "jitter"]
+    },
+    {
+      "id": "TEL_SPI_09",
+      "name": "SPI Configuration Interface",
+      "expression_latex": "\\text{CS\\_ASSERT} \\rightarrow \\text{SCLK} \\rightarrow \\text{MOSI/MISO} \\rightarrow \\text{CS\\_DEASSERT}",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "spi",
+      "domain": "Digital Interface", "variables": ["CS", "SCLK", "MOSI", "MISO"]
+    },
+    {
+      "id": "TEL_GPIO_10",
+      "name": "GPIO Discrete Monitoring",
+      "expression_latex": "\\text{GPIO\\_INPUT\\_CHANGE} \\rightarrow \\text{REGISTER\\_UPDATE} \\land latency \\leq 1\\mu s",
+      "status": "CANONICAL", "class": "telemetry", "subsystem": "gpio",
+      "domain": "Digital Interface", "variables": ["GPIO", "latency", "interrupt"]
+    }
+  ]
+}

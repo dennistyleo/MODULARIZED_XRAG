@@ -1,0 +1,199 @@
+# GNN Module - Deterministic Test Points
+# Version: 1.0.0
+# Methodology: AI-Ready YAML test point format
+
+module: gnn_module
+schema_ref: spec/schemas/gnn_output.json
+
+test_points:
+
+  - id: "GNN_001"
+    name: "Perfect 3D shape formation from 10 nodes"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: false
+      rotate_time: "NONE"
+    expected:
+      shape_formed: true
+      drift_detected: false
+      drift_location: null
+      "confidence": {operator: ">=", value: 0.80}
+    deterministic_check: "output['shape_formed'] == True and output['drift_detected'] == False"
+    performance:
+      max_duration_ms: 500
+      max_memory_mb: 256
+    serviceability:
+      trace_contains: "gnn_module"
+    reliability:
+      run_count: 100
+      expected_success_rate: 0.99
+
+  - id: "GNN_002"
+    name: "Drift detected at injected node N7"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+      - action: inject_drift
+        at_node: "N7"
+        drift_magnitude: 0.15
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: true
+      drift_location: "N7"
+      rotate_time: "NONE"
+    expected:
+      shape_formed: true
+      drift_detected: true
+      drift_location: "N7"
+      "drift_magnitude": {operator: ">=", value: 0.15}
+      "confidence": {operator: ">=", value: 0.80}
+    deterministic_check: "output['drift_location'] == 'N7'"
+    performance:
+      max_duration_ms: 500
+    serviceability:
+      logs_contains: "Drift detected at N7"
+      trace_contains: "gnn_module -> causal_module"
+    reliability:
+      run_count: 100
+      expected_success_rate: 0.99
+
+  - id: "GNN_003"
+    name: "Time rotation BACKWARD finds root cause before N7"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+      - action: inject_drift
+        at_node: "N7"
+        drift_magnitude: 0.15
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: true
+      drift_location: "N7"
+      rotate_time: "BACKWARD"
+      rotate_cycles: 10
+    expected:
+      root_cause: {not_null: true}
+      root_cause_chain: {not_empty: true, contains: "N7"}
+    deterministic_check: |
+      output['root_cause'] is not None and
+      'N7' in output['root_cause_chain'] and
+      output['root_cause_chain'].index('N7') > 0
+    performance:
+      max_duration_ms: 1000
+
+  - id: "GNN_004"
+    name: "Time rotation FORWARD predicts failure timeline"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+      - action: inject_drift
+        at_node: "N7"
+        drift_magnitude: 0.15
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: true
+      drift_location: "N7"
+      rotate_time: "FORWARD"
+      rotate_cycles: 10
+    expected:
+      prediction: {not_null: true}
+      cycles_to_failure: {operator: ">", value: 0}
+    deterministic_check: "output['cycles_to_failure'] is not None and output['cycles_to_failure'] > 0"
+    performance:
+      max_duration_ms: 1000
+
+  - id: "GNN_005"
+    name: "Actual shape matches ideal — no drift"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+      - action: set_ideal_shape
+        domain: "AEROSPACE"
+        shape: "$fixture"
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: false
+      rotate_time: "NONE"
+      ideal_shape: "$ideal_shape"
+    expected:
+      drift_detected: false
+      drift_magnitude: null
+    deterministic_check: "output['drift_detected'] == False"
+    performance:
+      max_duration_ms: 500
+
+  - id: "GNN_006"
+    name: "GNN drift confirmed real by World Model"
+    type: integration
+    setup:
+      - action: inject_drift
+        at_node: "N7"
+        drift_magnitude: 0.20
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      inject_drift: true
+      drift_location: "N7"
+    expected_bus_events:
+      - event: "DRIFT_DETECTED"
+        field: "drift_detected"
+        value: true
+      - event: "SHAPE_COMPARED"
+        field: "is_real_anomaly"
+        value: true
+    deterministic_check: "SHAPE_COMPARED event emitted with is_real_anomaly == True"
+    performance:
+      max_duration_ms: 2000
+
+  - id: "CAUSAL_001"
+    name: "10-node causal matrix generated with correct structure"
+    type: deterministic
+    setup:
+      - action: load_fixture
+        fixture: "perfect_shape_10_nodes.json"
+      - action: inject_drift
+        at_node: "N7"
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+      drift_location: "N7"
+    expected:
+      causal_matrix: {dimensions: [10, 10]}
+      "causal_matrix[*][*]": {operator: ">=", value: 0.0}
+      "causal_matrix[*][*]": {operator: "<=", value: 1.0}
+      root_cause_chain: {not_empty: true}
+      probability_of_failure: {operator: ">", value: 0.0}
+    deterministic_check: |
+      len(output['causal_matrix']) == 10 and
+      len(output['causal_matrix'][0]) == 10 and
+      output['probability_of_failure'] > 0.0
+    performance:
+      max_duration_ms: 500
+
+  - id: "GNN_ERROR_001"
+    name: "Drift computation failure falls back to drift_detected=false"
+    type: error_handling
+    setup:
+      - action: mock_gnn_error
+        error_type: "computation_failure"
+    input:
+      nodes: "$fixture.nodes"
+      edges: "$fixture.edges"
+    expected:
+      drift_detected: false
+    expected_log:
+      error_code: "E006"
+    deterministic_check: "output['drift_detected'] == False and system did not crash"

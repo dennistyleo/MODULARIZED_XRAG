@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "title": "GNN Module Output Schema",
+  "version": "1.0.0",
+  "description": "Output schema for the DRIFT_DETECTED BUS event payload",
+  "type": "object",
+  "required": ["shape_formed", "drift_detected", "confidence", "trace_id"],
+  "additionalProperties": false,
+  "properties": {
+    "shape_formed": {
+      "type": "boolean",
+      "description": "True if the 3D shape was successfully constructed"
+    },
+    "shape_nodes": {
+      "type": "array",
+      "description": "Deformed node positions after shape analysis",
+      "items": {
+        "type": "object",
+        "required": ["id", "x", "y", "z"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string", "pattern": "^N[0-9]+$"},
+          "x":  {"type": "number"},
+          "y":  {"type": "number"},
+          "z":  {"type": "number"}
+        }
+      }
+    },
+    "drift_detected": {
+      "type": "boolean",
+      "description": "True if structural drift was detected"
+    },
+    "drift_location": {
+      "type": ["string", "null"],
+      "pattern": "^N[0-9]+$",
+      "description": "Node ID where drift was detected, or null"
+    },
+    "drift_magnitude": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Magnitude of detected drift (0–1), or null if no drift"
+    },
+    "root_cause": {
+      "type": ["string", "null"],
+      "pattern": "^N[0-9]+$",
+      "description": "Entry-point node of the root cause chain, or null"
+    },
+    "root_cause_chain": {
+      "type": ["array", "null"],
+      "description": "Full root cause chain from origin to drift node",
+      "items": {
+        "type": "string",
+        "pattern": "^N[0-9]+$"
+      }
+    },
+    "prediction": {
+      "type": ["string", "null"],
+      "description": "Human-readable failure prediction string, or null"
+    },
+    "cycles_to_failure": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Estimated cycles until failure, or null"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "GNN's confidence in its drift analysis"
+    },
+    "scout_score": {
+      "type": ["number", "null"],
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "GNN scout's Axiom Democracy Winning_Score"
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9]{8}_[0-9]{6}_[a-z0-9]{4}$"
+    }
+  }
+}

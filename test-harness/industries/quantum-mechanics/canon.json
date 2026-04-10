@@ -1,0 +1,34 @@
+{
+  "industry": "quantum-mechanics",
+  "version": "1.0",
+  "source": "Newton→Einstein (Section L)",
+  "axioms": [
+    {
+      "id": "BOHR_QUANTIZE_01",
+      "name": "Bohr Quantized Angular Momentum",
+      "expression_latex": "L = n \\hbar",
+      "expression_pddl": "(= (angular-momentum ?electron) (* n hbar))",
+      "status": "CANONICAL",
+      "domain": "Quantum Mechanics",
+      "variables": ["L", "n", "hbar"]
+    },
+    {
+      "id": "BOHR_ENERGY_02",
+      "name": "Bohr Energy Level Formula",
+      "expression_latex": "E_n = -\\frac{13.6 \\text{ eV}}{n^2}",
+      "expression_pddl": "(= (energy-level ?atom n) (/ -13.6 (expt n 2)))",
+      "status": "CANONICAL",
+      "domain": "Quantum Mechanics",
+      "variables": ["E_n", "n"]
+    },
+    {
+      "id": "SCHRODINGER_03",
+      "name": "Time-Independent Schrödinger Equation",
+      "expression_latex": "-\\frac{\\hbar^2}{2m} \\nabla^2 \\psi + V\\psi = E\\psi",
+      "expression_pddl": "(= (hamiltonian ?wavefunction) (* E ?wavefunction))",
+      "status": "CANONICAL",
+      "domain": "Quantum Mechanics",
+      "variables": ["hbar", "m", "psi", "V", "E"]
+    }
+  ]
+}

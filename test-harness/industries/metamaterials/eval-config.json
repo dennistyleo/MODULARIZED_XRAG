@@ -1,0 +1,1 @@
+{"industry":"metamaterials","thresholds":{"semantic_distance_max":0.75,"derivation_success_required":true,"min_candidates_returned":1,"max_false_positives":2,"runtime_seconds_max":30},"weighting":{"semantic_distance":0.35,"derivation_success":0.35,"false_positive_penalty":0.20,"runtime_penalty":0.10},"pass_threshold":0.60}

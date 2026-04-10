@@ -1,0 +1,34 @@
+{
+  "industry": "metamaterials",
+  "version": "1.0",
+  "source": "Newton→Einstein (Section T)",
+  "axioms": [
+    {
+      "id": "DRUDE_01",
+      "name": "Drude Conductivity Model",
+      "expression_latex": "\\sigma(\\omega) = \\frac{\\sigma_0}{1 - i\\omega\\tau}",
+      "expression_pddl": "(= (conductivity ?metal omega) (/ sigma0 (- 1 (* i (* omega tau)))))",
+      "status": "CANONICAL",
+      "domain": "Metamaterials",
+      "variables": ["sigma", "sigma0", "omega", "tau"]
+    },
+    {
+      "id": "SNELL_LAW_02",
+      "name": "Snell's Law of Refraction",
+      "expression_latex": "n_1 \\sin\\theta_1 = n_2 \\sin\\theta_2",
+      "expression_pddl": "(= (* (refractive-index ?medium1) (sin (angle ?medium1))) (* (refractive-index ?medium2) (sin (angle ?medium2))))",
+      "status": "CANONICAL",
+      "domain": "Metamaterials",
+      "variables": ["n1", "theta1", "n2", "theta2"]
+    },
+    {
+      "id": "LORENTZ_CAUCHY_03",
+      "name": "Lorentz–Cauchy Dispersion",
+      "expression_latex": "n(\\lambda) = A + \\frac{B}{\\lambda^2} + \\frac{C}{\\lambda^4}",
+      "expression_pddl": "(= (refractive-index ?wavelength) (+ A (+ (/ B (expt ?wavelength 2)) (/ C (expt ?wavelength 4)))))",
+      "status": "CANONICAL",
+      "domain": "Metamaterials",
+      "variables": ["n", "lambda", "A", "B", "C"]
+    }
+  ]
+}

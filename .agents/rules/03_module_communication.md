@@ -1,0 +1,19 @@
+# Module Communication Rules
+
+## Sovereign BUS Only
+- NO direct function calls
+- ALL communication via SovereignBUS
+
+## Required Events
+- DATA_EXTRACTED
+- ONTOLOGY_CLASSIFIED
+- HYPOTHESIS_GENERATED
+- PATHWAY_FILTERED
+- RISK_ASSESSED
+- REPORT_READY
+- DRIFT_DETECTED
+- SHAPE_COMPARED
+- CAUSAL_MATRIX_READY
+- HITL_REQUEST
+- HITL_RESPONSE
+- ERROR

@@ -1,0 +1,74 @@
+{
+  "industry": "ai-pmc",
+  "version": "1.0",
+  "source": "XR-PMC Hardware Spec + AI-PMC Software Engineering Spec",
+  "description": "AI-powered power management controller axiom set — engineering + governance",
+  "axioms": [
+    {
+      "id": "PMC_SRC_SELECT_01",
+      "name": "Deterministic Source Selection",
+      "expression_latex": "\\text{SRC\\_SELECT}(from, to, reason) \\rightarrow \\text{STATE}(selected) \\land \\text{emit}(\\text{SRC\\_SELECT})",
+      "expression_pddl": "(:action select-source :parameters (?from - source ?to - source ?reason - trigger) :precondition (and (qualified ?to) (not (lockout ?to)) (not (transition-active))) :effect (and (selected ?to) (not (selected ?from)) (emit SRC_SELECT ?from ?to ?reason)))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "source-selection",
+      "domain": "Power Management",
+      "variables": ["from", "to", "reason", "selected"]
+    },
+    {
+      "id": "PMC_SEQ_RAIL_01",
+      "name": "Power Rail Sequencing",
+      "expression_latex": "\\text{PGOOD}(rail_i) \\land t_{wait} \\leq t_{settle} \\Rightarrow \\text{SEQ\\_STEP\\_DONE}(i)",
+      "expression_pddl": "(:action sequence-rail :parameters (?rail - rail ?prev - rail) :precondition (and (stable ?prev) (not (fault ?rail))) :effect (and (enabled ?rail) (emit SEQ_STEP ?rail)))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "power-sequencing",
+      "domain": "Power Management",
+      "variables": ["rail", "prev", "t_wait", "t_settle"]
+    },
+    {
+      "id": "PMC_RT_BASE_01",
+      "name": "Ride-Through Base Axiom",
+      "expression_latex": "V_{cap}(t) \\geq V_{min} \\land t_{hold} \\geq t_{required} \\Rightarrow \\text{RT\\_SAFE}",
+      "expression_pddl": "(:action engage-rt :parameters (?cap - capacitor) :precondition (and (>= (vcap ?cap) v_min) (<= (temp ?cap) t_max)) :effect (and (rt-active) (emit RT_TRIGGERED ?cap)))",
+      "status": "CANONICAL",
+      "class": "engineering",
+      "subsystem": "ride-through",
+      "domain": "Power Management",
+      "variables": ["V_cap", "V_min", "t_hold", "t_required"]
+    },
+    {
+      "id": "PMC_AI_GATE_01",
+      "name": "AI Executor Gate",
+      "expression_latex": "\\text{AI\\_mode} \\Rightarrow (\\text{AI\\_RUN} \\lor \\text{AI\\_SKIP} \\lor \\text{AI\\_EARLY\\_EXIT}) \\land \\text{evidence\\_logged}",
+      "expression_pddl": "(:action ai-gate-check :precondition (ai-mode-enabled) :effect (or (and (ai-run) (emit AI_RUN)) (and (ai-skip) (emit AI_SKIP)) (and (ai-early-exit) (emit AI_EARLY_EXIT))))",
+      "status": "CANONICAL",
+      "class": "governance",
+      "subsystem": "ai-executor",
+      "domain": "AI Governance",
+      "variables": ["AI_mode", "AI_RUN", "AI_SKIP", "AI_EARLY_EXIT"]
+    },
+    {
+      "id": "PMC_GUARDRAIL_BASE_02",
+      "name": "Guardrail Base Condition",
+      "expression_latex": "\\text{GUARDRAIL\\_SAFE} \\Leftrightarrow V_{in\\_ok} \\land V_{cap} \\geq V_{min} \\land T \\leq T_{max} \\land \\text{bus\\_ok}",
+      "expression_pddl": "(:action check-guardrail :effect (guardrail-safe (and (vin-ok) (>= vcap v_min) (<= temp t_max) (bus-ok))))",
+      "status": "CANONICAL",
+      "class": "governance",
+      "subsystem": "guardrails",
+      "domain": "AI Governance",
+      "variables": ["V_in", "V_cap", "T", "bus_ok"]
+    },
+    {
+      "id": "PMC_EVIDENCE_LOG_03",
+      "name": "Mandatory Evidence Logging",
+      "expression_latex": "\\forall e \\in \\text{Events}: \\text{log}(seq, t_{\\mu s}, event\\_id, payload, hash) \\land seq_{n} > seq_{n-1}",
+      "expression_pddl": "(:action log-evidence :parameters (?event - event) :precondition (valid-event ?event) :effect (and (logged ?event) (monotonic-seq) (emit ?event)))",
+      "status": "CANONICAL",
+      "class": "governance",
+      "subsystem": "evidence-logging",
+      "domain": "AI Governance",
+      "variables": ["seq", "t_us", "event_id", "payload", "hash"]
+    }
+  ]
+}
