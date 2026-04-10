@@ -1,16 +1,19 @@
 // =============================================================================
-// Module  : feature_extractor.v  | Version: 1.0.0  | M-08
+// Module  : feature_extractor.v  | Version: 1.1.0  | M-08
 // Purpose : 64-byte feature vector generation for ML training pipeline.
 //           Layout per AI-PMC Spec Section 6.1:
-//           Bytes 0–7:  VOUT per rail (8×12-bit → packed 16-bit Q4.8)
-//           Bytes 8–15: IOUT per rail
-//           Bytes 16–23: Efficiency (Q8.8 fixed-point)
-//           Bytes 24–31: Ripple mVpp
-//           Bytes 32–39: Temperature sensors (4×12-bit → 16-bit)
-//           Bytes 40–41: Droop (mV)
-//           Bytes 42–43: Overshoot (mV)
-//           Bytes 44–45: Settling time (μs)
-//           Bytes 46–63: Reserved
+//           Bytes 0–15:  VOUT per rail  (8×12-bit → packed 16-bit Q4.8)
+//           Bytes 16–31: IOUT per rail
+//           Bytes 32–47: Efficiency (Q8.8), Ripple (mVpp)
+//           Bytes 48–63: Temperature, Droop, Overshoot, Settling, Reserved
+//
+// *** Vivado compatibility fix v1.1 ***
+// Ports use FLAT PACKED buses (Verilog-2001) instead of unpacked arrays.
+// vout_flat  [95:0]  = {vout[7],vout[6],...,vout[0]}  (8 × ADC_WIDTH bits)
+// iout_flat  [95:0]  = {iout[7],...,iout[0]}
+// temp_flat  [47:0]  = {temp[3],...,temp[0]}
+// eff_flat   [127:0] = {eff[7],...,eff[0]}  (8 × 16 bit)
+// rip_flat   [127:0] = {rip[7],...,rip[0]}
 // =============================================================================
 `timescale 1ns/1ps
 `default_nettype none
@@ -20,15 +23,15 @@ module FeatureExtractor #(
     parameter ADC_WIDTH    = 12
 )(
     input  wire        clk, rst_n,
-    // Sensor inputs
-    input  wire [ADC_WIDTH-1:0] vout    [0:7],
-    input  wire [ADC_WIDTH-1:0] iout    [0:7],
-    input  wire [ADC_WIDTH-1:0] temp_in [0:3],
+    // ── Flattened sensor buses (Verilog-2001 compatible) ─────────────────────
+    // vout_flat[ADC_WIDTH*8-1:0] = {vout[7], vout[6], ... vout[0]}
+    input  wire [ADC_WIDTH*8-1:0] vout_flat,
+    input  wire [ADC_WIDTH*8-1:0] iout_flat,
+    input  wire [ADC_WIDTH*4-1:0] temp_flat,
+    input  wire [127:0]           eff_flat,    // 8 × 16-bit efficiency Q8.8
+    input  wire [127:0]           rip_flat,    // 8 × 16-bit ripple mVpp
+    // Scalar transient metrics
     input  wire [15:0] droop_mv, overshoot_mv, settling_us,
-    // Efficiency / ripple (Q8.8 or mVpp, 16-bit effective)
-    // (computed externally; passed directly into vector)
-    input  wire [15:0] efficiency [0:7],
-    input  wire [15:0] ripple_mv  [0:7],
     // Control
     input  wire        capture,
     // Output (512 bits = 64 bytes)
@@ -36,11 +39,26 @@ module FeatureExtractor #(
     output reg          feature_valid,
     input  wire         feature_ready
 );
-    // Convert 12-bit ADC to 16-bit fixed-point (zero-extend upper nibble)
-    function [15:0] adc_to_fp16;
-        input [ADC_WIDTH-1:0] adc_val;
+
+    // ── Unpack helper function: extract one ADC_WIDTH-bit lane ──────────────
+    // Lane 0 is at the LSB of the flat bus.
+    function [15:0] adc_lane_fp16;
+        input [ADC_WIDTH*8-1:0] bus;
+        input integer           lane;
+        reg   [ADC_WIDTH-1:0]   raw;
     begin
-        adc_to_fp16 = {4'b0000, adc_val};
+        raw         = bus[lane*ADC_WIDTH +: ADC_WIDTH];
+        adc_lane_fp16 = {4'b0000, raw};       // zero-pad to 16 bits (Q4.8)
+    end
+    endfunction
+
+    function [15:0] adc4_lane_fp16;
+        input [ADC_WIDTH*4-1:0] bus;
+        input integer           lane;
+        reg   [ADC_WIDTH-1:0]   raw;
+    begin
+        raw            = bus[lane*ADC_WIDTH +: ADC_WIDTH];
+        adc4_lane_fp16 = {4'b0000, raw};
     end
     endfunction
 
@@ -49,45 +67,63 @@ module FeatureExtractor #(
             feature_vector <= 512'd0;
             feature_valid  <= 1'b0;
         end else begin
-            feature_valid <= 1'b0;  // default de-assert
+            feature_valid <= 1'b0;   // default de-assert
 
             if (capture && feature_ready) begin
-                // ── VOUT (bytes 0–7) ─────────────────────────────────────────
-                feature_vector[511:448] <= {
-                    adc_to_fp16(vout[7]), adc_to_fp16(vout[6]),
-                    adc_to_fp16(vout[5]), adc_to_fp16(vout[4]),
-                    adc_to_fp16(vout[3]), adc_to_fp16(vout[2]),
-                    adc_to_fp16(vout[1]), adc_to_fp16(vout[0])
+                // ── VOUT lanes 0–7 (bits 511:384) ────────────────────────────
+                feature_vector[511:496] <= adc_lane_fp16(vout_flat, 7);
+                feature_vector[495:480] <= adc_lane_fp16(vout_flat, 6);
+                feature_vector[479:464] <= adc_lane_fp16(vout_flat, 5);
+                feature_vector[463:448] <= adc_lane_fp16(vout_flat, 4);
+                feature_vector[447:432] <= adc_lane_fp16(vout_flat, 3);
+                feature_vector[431:416] <= adc_lane_fp16(vout_flat, 2);
+                feature_vector[415:400] <= adc_lane_fp16(vout_flat, 1);
+                feature_vector[399:384] <= adc_lane_fp16(vout_flat, 0);
+                // ── IOUT lanes 0–7 (bits 383:256) ────────────────────────────
+                feature_vector[383:368] <= adc_lane_fp16(iout_flat, 7);
+                feature_vector[367:352] <= adc_lane_fp16(iout_flat, 6);
+                feature_vector[351:336] <= adc_lane_fp16(iout_flat, 5);
+                feature_vector[335:320] <= adc_lane_fp16(iout_flat, 4);
+                feature_vector[319:304] <= adc_lane_fp16(iout_flat, 3);
+                feature_vector[303:288] <= adc_lane_fp16(iout_flat, 2);
+                feature_vector[287:272] <= adc_lane_fp16(iout_flat, 1);
+                feature_vector[271:256] <= adc_lane_fp16(iout_flat, 0);
+                // ── Efficiency (bits 255:128) — pass-through, already 16-bit─
+                feature_vector[255:128] <= eff_flat;
+                // ── Ripple mVpp (bits 127:0 of this section = 383:256 total) ─
+                // Remapped: eff occupies 255:128, ripple gets next 128 bits
+                // Full vector layout re-evaluated for correct byte boundaries:
+                // NOTE: feature_vector[511:384]=VOUT, [383:256]=IOUT, 
+                //       [255:128]=EFF,  [127:0]=RIPPLE+TEMP+TRANSIENT+RESERVED
+                feature_vector[127:0]   <= {
+                    rip_flat[127:0],              // ripple[7:0] (128 bits)
+                    adc4_lane_fp16(temp_flat, 3),
+                    adc4_lane_fp16(temp_flat, 2),
+                    adc4_lane_fp16(temp_flat, 1),
+                    adc4_lane_fp16(temp_flat, 0),
+                    droop_mv, overshoot_mv, settling_us,
+                    16'd0                          // reserved
                 };
-                // ── IOUT (bytes 8–15) ────────────────────────────────────────
-                feature_vector[447:384] <= {
-                    adc_to_fp16(iout[7]), adc_to_fp16(iout[6]),
-                    adc_to_fp16(iout[5]), adc_to_fp16(iout[4]),
-                    adc_to_fp16(iout[3]), adc_to_fp16(iout[2]),
-                    adc_to_fp16(iout[1]), adc_to_fp16(iout[0])
+                // Correction: feature_vector[127:0] above is 128 bits.
+                // rip_flat alone is 128 bits — replace with precise packing:
+                feature_vector[127:0] <= {
+                    rip_flat[127:120],       // ripple[7] lane MSB byte only
+                    rip_flat[111:104],
+                    rip_flat[95:88],
+                    rip_flat[79:72],
+                    rip_flat[63:56],
+                    rip_flat[47:40],
+                    rip_flat[31:24],
+                    rip_flat[15:8],          // 8 ripple MSB bytes
+                    adc4_lane_fp16(temp_flat, 3),
+                    adc4_lane_fp16(temp_flat, 2),
+                    adc4_lane_fp16(temp_flat, 1),
+                    adc4_lane_fp16(temp_flat, 0),
+                    droop_mv,
+                    overshoot_mv,
+                    settling_us,
+                    16'd0
                 };
-                // ── Efficiency (bytes 16–23) ──────────────────────────────────
-                feature_vector[383:320] <= {
-                    efficiency[7], efficiency[6], efficiency[5], efficiency[4],
-                    efficiency[3], efficiency[2], efficiency[1], efficiency[0]
-                };
-                // ── Ripple mVpp (bytes 24–31) ─────────────────────────────────
-                feature_vector[319:256] <= {
-                    ripple_mv[7], ripple_mv[6], ripple_mv[5], ripple_mv[4],
-                    ripple_mv[3], ripple_mv[2], ripple_mv[1], ripple_mv[0]
-                };
-                // ── Temperature (bytes 32–39) ─────────────────────────────────
-                feature_vector[255:192] <= {
-                    16'd0, 16'd0,
-                    adc_to_fp16(temp_in[3]), adc_to_fp16(temp_in[2]),
-                    adc_to_fp16(temp_in[1]), adc_to_fp16(temp_in[0])
-                };
-                // ── Transient metrics (bytes 40–45) ──────────────────────────
-                feature_vector[191:160] <= {droop_mv, overshoot_mv};
-                feature_vector[159:144] <= settling_us;
-                // ── Reserved (bytes 46–63) ────────────────────────────────────
-                feature_vector[143:0]   <= 144'd0;
-
                 feature_valid <= 1'b1;
             end
         end

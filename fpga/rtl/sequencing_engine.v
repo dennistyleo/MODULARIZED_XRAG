@@ -86,7 +86,7 @@ module SequencingEngine #(
     always @(posedge clk or negedge rst_n) if (!rst_n) ts_ns <= 0; else ts_ns <= ts_ns + 32'd10;
 
     // Event ID constants (ASCII packed)
-    localparam [63:0] EV_SEQ_START  = 64'h455649442E534551_53; // "EVID.SEQS"
+    localparam [63:0] EV_SEQ_START  = 64'h455649442E53455153; // "EVID.SEQS" (9 ascii bytes, MSB-padded)
     localparam [63:0] EV_STEP_ENT   = 64'h455649442E535445;
     localparam [63:0] EV_STEP_EXT   = 64'h455649442E535458;
     localparam [63:0] EV_BLOCKED    = 64'h455649442E424C4B;
@@ -113,7 +113,7 @@ module SequencingEngine #(
         if (!rst_n) begin
             state <= SS_IDLE; seq_state <= SS_IDLE;
             current_step <= 0; timeout_count <= 0;
-            en_out <= 0; reset_out <= '1; evidence_valid <= 0;
+            en_out <= 0; reset_out <= {MAX_RAILS{1'b1}}; evidence_valid <= 0;
         end else begin
             evidence_valid <= 0;
             seq_state <= state;
@@ -175,7 +175,7 @@ module SequencingEngine #(
 
                 SS_DONE, SS_FAIL: begin
                     if (seq_stop) begin
-                        en_out <= 0; reset_out <= '1; current_step <= 0;
+                        en_out <= 0; reset_out <= {MAX_RAILS{1'b1}}; current_step <= 0;
                         state <= SS_IDLE;
                     end
                 end

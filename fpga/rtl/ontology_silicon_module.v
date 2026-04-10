@@ -128,7 +128,8 @@ module OntologySiliconModule #(
         .ev_fifo_count(ev_fifo_count), .atp_test_id(atp_test_id),
         .atp_inject_cmd(atp_inject_cmd), .atp_check_cmd(atp_check_cmd),
         .atp_pass(atp_pass), .atp_fail_reason(atp_fail_reason),
-        .feature_vector_lsw(feature_vector[63:0]), .ml_capture(ml_capture)
+        .feature_vector_lsw(feature_vector[63:0]), .ml_capture(ml_capture),
+        .decomp_done(decomp_done)
     );
     PrimaryDecomposer    #(.MAX_AXIOMS(MAX_AXIOMS),.MAX_VARIABLES(MAX_VARIABLES),.COEFF_WIDTH(COEFF_WIDTH),.POLY_WIDTH(POLY_WIDTH)) u_decomp (
         .clk(clk_300), .rst_n(rst_n), .start(ctrl_reg[0]),
@@ -220,8 +221,12 @@ module OntologySiliconModule #(
     );
     FeatureExtractor     #(.ADC_WIDTH(ADC_WIDTH)) u_feat (
         .clk(clk_100), .rst_n(rst_n),
-        .vout({adc_bus_voltage,{7{12'd0}}}), .iout({adc_bus_current,{7{12'd0}}}),
-        .temp_in({adc_temp_hotspot,adc_temp_rate,{2{12'd0}}}),
+        // Flat packed buses: {lane[7], lane[6], ... lane[0]}
+        .vout_flat({adc_bus_voltage, {7{12'd0}}}),
+        .iout_flat({adc_bus_current, {7{12'd0}}}),
+        .temp_flat({adc_temp_rate, adc_temp_hotspot, {2{12'd0}}}),
+        .eff_flat(128'd0),    // not wired in this build
+        .rip_flat(128'd0),
         .droop_mv(gov_fault_cause[15:0]), .overshoot_mv(16'd0), .settling_us(16'd0),
         .capture(ml_capture),
         .feature_vector(feature_vector), .feature_valid(feat_valid), .feature_ready(1'b1)

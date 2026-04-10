@@ -32,6 +32,8 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
     input  wire        atp_pass,
     input  wire [31:0] atp_fail_reason,
     input  wire [63:0] feature_vector_lsw,
+    // ── Decomposer/Groebner status ────────────────────────────────────────────
+    input  wire        decomp_done,
     // ── Writable config outputs to engines ────────────────────────────────────
     output reg  [31:0] control_reg,
     output reg  [31:0] axiom_base_addr, result_base_addr, target_addr,
@@ -123,8 +125,7 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
             s_axi_arready <= s_axi_arvalid;
             if (s_axi_arvalid) begin
                 s_axi_rvalid <= 1; s_axi_rresp <= 2'b00;
-                case ({s_axi_araddr[14:12], 9'b0} | {s_axi_araddr[14:12]})
-                    default: case (s_axi_araddr[14:2])
+                case (s_axi_araddr[14:2])
                         // 0x0000 core
                         13'h000: s_axi_rdata <= {29'd0, ~(|prime_count), decomp_done, 1'b0};
                         13'h001: s_axi_rdata <= control_reg;
@@ -157,9 +158,8 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
                         // 0x7000 feature extractor
                         13'h1C00: s_axi_rdata <= feature_vector_lsw[31:0];
                         13'h1C01: s_axi_rdata <= feature_vector_lsw[63:32];
-                        default: s_axi_rdata <= 32'hDEAD_BEEF;
+                        default: s_axi_rdata <= 32'hDEADBEEF;
                     endcase
-                endcase
             end else if (s_axi_rready) s_axi_rvalid <= 0;
         end
     end
