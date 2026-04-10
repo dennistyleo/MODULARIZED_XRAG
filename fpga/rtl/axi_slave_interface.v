@@ -32,6 +32,7 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
     input  wire        atp_pass,
     input  wire [31:0] atp_fail_reason,
     input  wire [63:0] feature_vector_lsw,
+    input  wire [17:0] domain_status_flat,   // {status[5],status[4],...status[0]} each 3-bit
     // ── Decomposer/Groebner status ────────────────────────────────────────────
     input  wire        decomp_done,
     // ── Writable config outputs to engines ────────────────────────────────────
@@ -151,7 +152,13 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
                         // 0x5000 ATP
                         13'h1401: s_axi_rdata <= {31'd0, atp_pass};
                         13'h1402: s_axi_rdata <= atp_fail_reason;
-                        // 0x6000 UPASL
+                        // 0x6000 UPASL per-domain status (3-bit SAT=1/VIOL=2/UND=4)
+                        13'h1800: s_axi_rdata <= {29'd0, domain_status_flat[2:0]};   // Thermal
+                        13'h1801: s_axi_rdata <= {29'd0, domain_status_flat[5:3]};   // Mech
+                        13'h1802: s_axi_rdata <= {29'd0, domain_status_flat[8:6]};   // EPS
+                        13'h1803: s_axi_rdata <= {29'd0, domain_status_flat[11:9]};  // Radiation
+                        13'h1804: s_axi_rdata <= {29'd0, domain_status_flat[14:12]}; // Fluid
+                        13'h1805: s_axi_rdata <= {29'd0, domain_status_flat[17:15]}; // Info
                         13'h1806: s_axi_rdata <= global_hazard;
                         13'h1807: s_axi_rdata <= stability_index;
                         13'h1808: s_axi_rdata <= {30'd0, upasl_decision};

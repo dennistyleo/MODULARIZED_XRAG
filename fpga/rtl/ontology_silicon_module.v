@@ -67,6 +67,10 @@ module OntologySiliconModule #(
     wire [2:0]  gov_state; wire [1:0] upasl_decision;
     wire [2:0]  domain_status [0:NUM_DOMAINS-1];
     wire [31:0] limit_fraction [0:NUM_DOMAINS-1];
+    // Flatten domain_status for AXI port (Verilog-2001: no unpacked in port list)
+    wire [17:0] domain_status_flat;
+    assign domain_status_flat = {domain_status[5], domain_status[4], domain_status[3],
+                                  domain_status[2], domain_status[1], domain_status[0]};
     wire        decomp_done, gb_done, gb_coeff_valid, invariant_irq;
     wire [COEFF_WIDTH-1:0] gb_basis_coeff;
     wire [POLY_WIDTH-1:0]  prime_tdata; wire prime_tvalid, prime_tready;
@@ -129,6 +133,7 @@ module OntologySiliconModule #(
         .atp_inject_cmd(atp_inject_cmd), .atp_check_cmd(atp_check_cmd),
         .atp_pass(atp_pass), .atp_fail_reason(atp_fail_reason),
         .feature_vector_lsw(feature_vector[63:0]), .ml_capture(ml_capture),
+        .domain_status_flat(domain_status_flat),
         .decomp_done(decomp_done)
     );
     PrimaryDecomposer    #(.MAX_AXIOMS(MAX_AXIOMS),.MAX_VARIABLES(MAX_VARIABLES),.COEFF_WIDTH(COEFF_WIDTH),.POLY_WIDTH(POLY_WIDTH)) u_decomp (
