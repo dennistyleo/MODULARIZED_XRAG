@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : causal_invariant_tracker.v  | Version: 1.0.0
+// Module  : causal_invariant_tracker.v  | Version: 1.1.0
 // Purpose : CAM-based causal invariant checking. Stores a set of known-valid
 //           axiom IDs in a Content-Addressable Memory. Raises an IRQ and
 //           increments violation_count when an unknown axiom is presented.
@@ -22,18 +22,14 @@ module CausalInvariantTracker #(
     // ── CAM storage (synthesises to distributed RAM with comparison logic) ────
     reg [ID_WIDTH-1:0] cam [0:NUM_INVARIANTS-1];
     reg                cam_valid [0:NUM_INVARIANTS-1];
+    // ANOM-007 FIX: CAM reset via rst_n (synthesis-safe; replaces non-synthesisable initial block)
+    // TEST_POINT: DESIGN_001 — CAM contents known-good after rst_n deassertion
     integer j;
-    initial begin
-        // Pre-load known-good axiom IDs (first 8 hardcoded canonical IDs)
-        for (j=0; j<NUM_INVARIANTS; j=j+1) begin
-            cam[j]       = j[ID_WIDTH-1:0];
-            cam_valid[j] = (j < 8) ? 1'b1 : 1'b0;
-        end
-    end
 
     // ── CAM match logic ───────────────────────────────────────────────────────
     reg [NUM_INVARIANTS-1:0] match_bits;
     always @(*) begin
+        match_bits = {NUM_INVARIANTS{1'b0}};  // ANOM-015 FIX: default prevents latch
         for (j=0; j<NUM_INVARIANTS; j=j+1)
             match_bits[j] = cam_valid[j] && (cam[j] == axiom_id_in);
     end
@@ -42,7 +38,7 @@ module CausalInvariantTracker #(
     // ── CAM write: register new axiom if capacity available ──────────────────
     reg [5:0] free_slot;
     always @(*) begin
-        free_slot = 0;
+        free_slot = NUM_INVARIANTS[5:0];  // ANOM-015 FIX: default = invalid slot
         for (j=0; j<NUM_INVARIANTS; j=j+1)
             if (!cam_valid[j]) free_slot = j[5:0];
     end
@@ -50,6 +46,11 @@ module CausalInvariantTracker #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             violation_count <= 0; irq_out <= 0;
+            // ANOM-007 FIX: Pre-load 8 canonical IDs at reset (synthesis-safe)
+            for (j=0; j<NUM_INVARIANTS; j=j+1) begin
+                cam[j]       <= j[ID_WIDTH-1:0];
+                cam_valid[j] <= (j < 8) ? 1'b1 : 1'b0;
+            end
         end else begin
             irq_out <= 0;
             if (axiom_valid) begin

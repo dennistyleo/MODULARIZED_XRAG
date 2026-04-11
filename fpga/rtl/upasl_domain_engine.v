@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : upasl_domain_engine.v  | Version: 1.0.0
+// Module  : upasl_domain_engine.v  | Version: 1.1.0
 // Purpose : UPASL 6-Domain Engine (Thermal / Mechanical / EPS / Radiation /
 //           Fluid / Information). Evaluates SAT/VIOL/UND per domain every clock.
 //           All arithmetic in Q16.16 fixed-point (65536 = 1.0).
@@ -27,8 +27,11 @@ module UPASLDomainEngine #(
     input  wire [31:0] d_max, d_dot_max, r_see_max,
     input  wire [31:0] tau_s_max, pi_max, l_max, j_max,
     // ── Outputs ───────────────────────────────────────────────────────────────
-    output reg  [2:0]  domain_status  [0:NUM_DOMAINS-1],
-    output reg  [31:0] limit_fraction [0:NUM_DOMAINS-1],
+    // ANOM-001/002 FIX: Flattened to packed buses (Verilog-2001 synthesis compliant)
+    // domain_status_flat[d*3+2 -: 3] = domain_status[d]
+    // limit_fraction_flat[d*32+31 -: 32] = limit_fraction[d]
+    output reg  [NUM_DOMAINS*3-1:0]  domain_status_flat,
+    output reg  [NUM_DOMAINS*32-1:0] limit_fraction_flat,
     output reg  [31:0] global_hazard,
     output reg  [31:0] stability_index,
     output reg  [1:0]  decision
@@ -104,33 +107,47 @@ module UPASLDomainEngine #(
             global_hazard <= 0; stability_index <= 0; decision <= DEC_REFUSE;
         end else begin
             // Domain status
-            domain_status[0] <= th_und ? UND : th_viol ? VIOL : SAT;
-            domain_status[1] <= mc_und ? UND : mc_viol ? VIOL : SAT;
-            domain_status[2] <= ep_und ? UND : ep_viol ? VIOL : SAT;
-            domain_status[3] <= rd_und ? UND : rd_viol ? VIOL : SAT;
-            domain_status[4] <= fl_und ? UND : fl_viol ? VIOL : SAT;
-            domain_status[5] <= in_und ? UND : in_viol ? VIOL : SAT;
+            // Internal status regs (kept for readability; flattened to ports below)
+            // ANOM-001 FIX: internal regs ds[] and lf[] replace direct port array writes
+            reg [2:0]  ds [0:NUM_DOMAINS-1];
+            reg [31:0] lf [0:NUM_DOMAINS-1];
+            ds[0] <= th_und ? UND : th_viol ? VIOL : SAT;
+            ds[1] <= mc_und ? UND : mc_viol ? VIOL : SAT;
+            ds[2] <= ep_und ? UND : ep_viol ? VIOL : SAT;
+            ds[3] <= rd_und ? UND : rd_viol ? VIOL : SAT;
+            ds[4] <= fl_und ? UND : fl_viol ? VIOL : SAT;
+            ds[5] <= in_und ? UND : in_viol ? VIOL : SAT;
 
-            // Limit fraction = (max - current) / (max - min) in Q16.16  (UPASL Eq 20)
-            limit_fraction[0] <= safe_div_q1616(
+            // Flatten domain_status to packed output
+            domain_status_flat[ 2: 0] <= ds[0]; domain_status_flat[ 5: 3] <= ds[1];
+            domain_status_flat[ 8: 6] <= ds[2]; domain_status_flat[11: 9] <= ds[3];
+            domain_status_flat[14:12] <= ds[4]; domain_status_flat[17:15] <= ds[5];
+
+            // Limit fractions — ANOM-002 FIX: write to lf[] then flatten
+            lf[0] <= safe_div_q1616(
                 {20'd0, t_max[ADC_WIDTH-1:0] - temp_hotspot},
                 {20'd0, t_max[ADC_WIDTH-1:0] - h_t_min[ADC_WIDTH-1:0]});
-            limit_fraction[1] <= safe_div_q1616(
+            lf[1] <= safe_div_q1616(
                 {20'd0, sigma_max[ADC_WIDTH-1:0] - stress_mech}, {20'd0, sigma_max[ADC_WIDTH-1:0]});
-            limit_fraction[2] <= safe_div_q1616(
+            lf[2] <= safe_div_q1616(
                 {20'd0, bus_voltage - v_min[ADC_WIDTH-1:0]},
                 {20'd0, {ADC_WIDTH{1'b1}} - v_min[ADC_WIDTH-1:0]});
-            limit_fraction[3] <= safe_div_q1616(
+            lf[3] <= safe_div_q1616(
                 {20'd0, d_max[ADC_WIDTH-1:0] - dose_rate}, {20'd0, d_max[ADC_WIDTH-1:0]});
-            limit_fraction[4] <= safe_div_q1616(
+            lf[4] <= safe_div_q1616(
                 {20'd0, tau_s_max[ADC_WIDTH-1:0] - fill_fraction},
                 {20'd0, tau_s_max[ADC_WIDTH-1:0]});
-            limit_fraction[5] <= safe_div_q1616(
+            lf[5] <= safe_div_q1616(
                 l_max - loop_latency, l_max);
 
+            // Flatten limit_fractions to packed output
+            limit_fraction_flat[ 31:  0] <= lf[0]; limit_fraction_flat[ 63: 32] <= lf[1];
+            limit_fraction_flat[ 95: 64] <= lf[2]; limit_fraction_flat[127: 96] <= lf[3];
+            limit_fraction_flat[159:128] <= lf[4]; limit_fraction_flat[191:160] <= lf[5];
+
             // Stability index = mean of limit fractions (UPASL §11)
-            stability_index <= (limit_fraction[0] + limit_fraction[1] + limit_fraction[2] +
-                                 limit_fraction[3] + limit_fraction[4] + limit_fraction[5]) / 6;
+            stability_index <= (lf[0] + lf[1] + lf[2] + lf[3] + lf[4] + lf[5]) / 6;
+
 
             // Global hazard = inverse of stability
             global_hazard <= 32'h0001_0000 - stability_index;

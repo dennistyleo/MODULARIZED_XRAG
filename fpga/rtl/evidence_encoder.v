@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : evidence_encoder.v  | Version: 1.0.0  | M-03
+// Module  : evidence_encoder.v  | Version: 1.1.0  | M-03
 // Purpose : NDJSON-formatted evidence capture, FIFO storage, rate limiting.
 //           256-bit internal record: {ts_ns[31:0], event_id[63:0],
 //           state_id[31:0], severity[31:0], payload[95:0]}
@@ -90,7 +90,7 @@ module EvidenceEncoder #(
             rd_ptr <= 0; ev_empty <= 1; beat_idx <= 0;
             m_axis_tvalid <= 0; m_axis_tdata <= 0;
             cur_record <= 0; reading <= 0;
-            ev_empty <= 1;
+            // ANOM-022 FIX: Removed duplicate ev_empty assignment (was on next line).
         end else begin
             ev_empty <= (ev_count == 0);
 

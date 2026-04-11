@@ -90,22 +90,9 @@ module FeatureExtractor #(
                 feature_vector[271:256] <= adc_lane_fp16(iout_flat, 0);
                 // ── Efficiency (bits 255:128) — pass-through, already 16-bit─
                 feature_vector[255:128] <= eff_flat;
-                // ── Ripple mVpp (bits 127:0 of this section = 383:256 total) ─
-                // Remapped: eff occupies 255:128, ripple gets next 128 bits
-                // Full vector layout re-evaluated for correct byte boundaries:
-                // NOTE: feature_vector[511:384]=VOUT, [383:256]=IOUT, 
-                //       [255:128]=EFF,  [127:0]=RIPPLE+TEMP+TRANSIENT+RESERVED
-                feature_vector[127:0]   <= {
-                    rip_flat[127:0],              // ripple[7:0] (128 bits)
-                    adc4_lane_fp16(temp_flat, 3),
-                    adc4_lane_fp16(temp_flat, 2),
-                    adc4_lane_fp16(temp_flat, 1),
-                    adc4_lane_fp16(temp_flat, 0),
-                    droop_mv, overshoot_mv, settling_us,
-                    16'd0                          // reserved
-                };
-                // Correction: feature_vector[127:0] above is 128 bits.
-                // rip_flat alone is 128 bits — replace with precise packing:
+                // ── Ripple + Temp + Transient (bits 127:0) ─────────────────
+                // ANOM-006 FIX: Removed dead first write. Single authoritative
+                // write per spec/25_aipmc_rtl_spec.md §5.6 feature vector layout.
                 feature_vector[127:0] <= {
                     rip_flat[127:120],       // ripple[7] lane MSB byte only
                     rip_flat[111:104],

@@ -1,0 +1,22 @@
+# requirements-dev.txt — Sovereign Matrix test & tooling dependencies
+# Install: pip install -r requirements-dev.txt
+
+# ── Core test framework ──────────────────────────────────────────────────────
+pytest==8.3.5
+pytest-rerunfailures==14.0
+pytest-html==4.1.1
+
+# ── Browser automation (L8 UX Walkthrough) ──────────────────────────────────
+playwright>=1.42.0
+pytest-playwright>=0.4.4     # provides --video, --screenshot, --browser flags
+
+# ── Visual regression helpers ────────────────────────────────────────────────
+pillow>=10.3.0
+numpy>=1.26.4
+
+# ── RTL lint (L7) ────────────────────────────────────────────────────────────
+# lint_rtl.py uses stdlib only — no extra packages needed
+
+# ── Optional: coverage reporting ─────────────────────────────────────────────
+pytest-cov>=5.0.0
+coverage>=7.5.0

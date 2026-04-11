@@ -53,6 +53,33 @@ resize_pblock [get_pblocks pb_axi] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y1}
 set_multicycle_path -setup 2 -from [get_cells u_causal/cam*] -to [get_cells u_causal]
 set_multicycle_path -hold  1 -from [get_cells u_causal/cam*] -to [get_cells u_causal]
 
+# ── ANOM-026 CDC Constraints (Layer 4)  ───────────────────────────────────────
+# 2-FF synchroniser cells must be ASYNC_REG for STA and retiming protection.
+# max_delay = 1 clk_100 period (10 ns) — synchroniser input must settle within
+# one destination clock period so the 2nd FF samples a stable value.
+
+# CDC-1: decomp_done (clk_300 → clk_100) — req signal 2-FF sync
+set_property ASYNC_REG TRUE [get_cells {decomp_done_s1_100_reg decomp_done_s2_100_reg}]
+set_max_delay -datapath_only \
+    -from [get_cells {decomp_done_req_300_reg}] \
+    -to   [get_cells {decomp_done_s1_100_reg}] \
+    10.0
+
+# CDC-2: prime_count bus (clk_300 → clk_100) — bus valid only when ack handshake fires,
+# so data is stable for at least one clk_100 period before latch.
+set_property ASYNC_REG TRUE [get_cells {prime_count_s1_100_reg[*] prime_count_s2_100_reg[*]}]
+set_max_delay -datapath_only \
+    -from [get_cells {prime_count_reg[*]}] \
+    -to   [get_cells {prime_count_s1_100_reg[*]}] \
+    10.0
+
+# CDC-3: start signal (clk_100 → clk_300) — ctrl_reg[0] 2-FF sync
+set_property ASYNC_REG TRUE [get_cells {start_s1_300_reg start_s2_300_reg}]
+set_max_delay -datapath_only \
+    -from [get_cells {ctrl_reg_reg[0]}] \
+    -to   [get_cells {start_s1_300_reg}] \
+    10.0
+
 # ── Bitstream properties ──────────────────────────────────────────────────────
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4           [current_design]
 set_property BITSTREAM.CONFIG.CONFIGRATE  33           [current_design]

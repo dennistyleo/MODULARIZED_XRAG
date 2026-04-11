@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : sequencing_engine.v  | Version: 1.0.0  | M-05
+// Module  : sequencing_engine.v  | Version: 1.1.0  | M-05
 // Purpose : Power rail sequencing executor.
 //           Steps: NOP / ASSERT_EN / DEASSERT_EN / RELEASE_RESET / ASSERT_RESET
 //           Guard checks vin_valid + pgood before each step advance.
@@ -47,11 +47,12 @@ module SequencingEngine #(
 
     // Hardcoded POWER_ON sequence (Spec Section 3.2)
     // Step: [semantic, rail_index, guard_mask, timeout_cycles]
-    reg [2:0]  step_semantic  [0:MAX_STEPS-1];
-    reg [2:0]  step_rail      [0:MAX_STEPS-1];
-    reg [31:0] step_timeout   [0:MAX_STEPS-1];
+    // ANOM-008 FIX: rom_style attribute + ROM_INIT tag (synthesisable constant tables)
+    (* rom_style = "distributed" *) reg [2:0]  step_semantic  [0:MAX_STEPS-1];  // ROM_INIT
+    (* rom_style = "distributed" *) reg [2:0]  step_rail      [0:MAX_STEPS-1];  // ROM_INIT
+    (* rom_style = "distributed" *) reg [31:0] step_timeout   [0:MAX_STEPS-1];  // ROM_INIT
     integer si;
-    initial begin
+    initial begin // ROM_INIT — synthesis tool infers as distributed ROM (safe)
         for (si=0; si<MAX_STEPS; si=si+1) begin
             step_semantic[si] = NOP; step_rail[si] = 0; step_timeout[si] = 32'd100_000;
         end
@@ -86,7 +87,8 @@ module SequencingEngine #(
     always @(posedge clk or negedge rst_n) if (!rst_n) ts_ns <= 0; else ts_ns <= ts_ns + 32'd10;
 
     // Event ID constants (ASCII packed)
-    localparam [63:0] EV_SEQ_START  = 64'h455649442E53455153; // "EVID.SEQS" (9 ascii bytes, MSB-padded)
+    // ANOM-019 FIX: Truncated to 64-bit (dropped leading 'E'=0x45 byte, same as governance_fsm)
+    localparam [63:0] EV_SEQ_START_ID = 64'h5649442E53455153; // "VID.SEQS" (was EVID.SEQS)
     localparam [63:0] EV_STEP_ENT   = 64'h455649442E535445;
     localparam [63:0] EV_STEP_EXT   = 64'h455649442E535458;
     localparam [63:0] EV_BLOCKED    = 64'h455649442E424C4B;
@@ -122,7 +124,8 @@ module SequencingEngine #(
                 SS_IDLE: begin
                     if (seq_start && guard_ok) begin
                         current_step <= 0; timeout_count <= 0;
-                        emit_ev(EV_SEQ_START, 32'd0, 32'd0, 96'd0);
+                        emit_ev(EV_SEQ_START_ID, 32'd0, 32'd0, 96'd0);
+
                         state <= SS_RUN;
                         emit_ev(EV_STEP_ENT, 32'd0, 32'd0, {88'd0, 8'd0});
                     end else if (seq_start && !guard_ok) begin

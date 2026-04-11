@@ -65,12 +65,9 @@ module OntologySiliconModule #(
     wire [31:0] gov_profile_id, gov_timeout_ms, gov_thresholds, gov_hysteresis, gov_allowed_actions;
     wire [31:0] global_hazard, stability_index, invariant_violations, gov_fault_cause;
     wire [2:0]  gov_state; wire [1:0] upasl_decision;
-    wire [2:0]  domain_status [0:NUM_DOMAINS-1];
-    wire [31:0] limit_fraction [0:NUM_DOMAINS-1];
-    // Flatten domain_status for AXI port (Verilog-2001: no unpacked in port list)
-    wire [17:0] domain_status_flat;
-    assign domain_status_flat = {domain_status[5], domain_status[4], domain_status[3],
-                                  domain_status[2], domain_status[1], domain_status[0]};
+    // ANOM-001/002 + Layer 1: Use flat buses directly from UPASL (no manual assign needed)
+    wire [NUM_DOMAINS*3-1:0]  domain_status_flat;    // from u_upasl
+    wire [NUM_DOMAINS*32-1:0] limit_fraction_flat;   // from u_upasl
     wire        decomp_done, gb_done, gb_coeff_valid, invariant_irq;
     wire [COEFF_WIDTH-1:0] gb_basis_coeff;
     wire [POLY_WIDTH-1:0]  prime_tdata; wire prime_tvalid, prime_tready;
@@ -102,6 +99,51 @@ module OntologySiliconModule #(
     wire [255:0] any_ev_data = gov_ev_valid ? gov_ev_data : seq_ev_data;
     wire gov_ev_ready = ~ev_full;
     wire seq_ev_ready = ~ev_full & ~gov_ev_valid;
+
+    // ── Layer 4: CDC Synchronisers (ANOM-026) ─────────────────────────────────
+    // clk_300 → clk_100: decomp_done 1-cycle pulse with valid/ack handshake
+    reg decomp_done_req_300;      // set in clk_300 domain
+    reg decomp_done_ack_100;      // clear in clk_100 domain
+    (* ASYNC_REG = "TRUE" *) reg decomp_done_s1_100, decomp_done_s2_100;
+    wire decomp_done_100;         // synchronised single-cycle pulse in clk_100 domain
+    always @(posedge clk_300 or negedge rst_n)
+        if (!rst_n)     decomp_done_req_300 <= 0;
+        else if (decomp_done) decomp_done_req_300 <= ~decomp_done_ack_100;
+    always @(posedge clk_100 or negedge rst_n) begin
+        if (!rst_n) begin
+            decomp_done_s1_100 <= 0; decomp_done_s2_100 <= 0; decomp_done_ack_100 <= 0;
+        end else begin
+            decomp_done_s1_100 <= decomp_done_req_300;
+            decomp_done_s2_100 <= decomp_done_s1_100;
+            decomp_done_ack_100 <= decomp_done_s2_100;
+        end
+    end
+    assign decomp_done_100 = decomp_done_s2_100 & ~decomp_done_ack_100;  // rising edge detect
+
+    // clk_300 → clk_100: prime_count 32-bit bus (latch when done_100 fires)
+    (* ASYNC_REG = "TRUE" *) reg [31:0] prime_count_s1_100, prime_count_s2_100;
+    reg [31:0] prime_count_100;   // stable read in clk_100 domain
+    always @(posedge clk_100 or negedge rst_n) begin
+        if (!rst_n) begin
+            prime_count_s1_100 <= 0; prime_count_s2_100 <= 0; prime_count_100 <= 0;
+        end else begin
+            prime_count_s1_100 <= prime_count;     // prime_count driven by clk_300 domain
+            prime_count_s2_100 <= prime_count_s1_100;
+            if (decomp_done_100) prime_count_100 <= prime_count_s2_100;  // latch on valid
+        end
+    end
+
+    // clk_100 → clk_300: start signal (ctrl_reg[0])
+    (* ASYNC_REG = "TRUE" *) reg start_s1_300, start_s2_300;
+    always @(posedge clk_300 or negedge rst_n) begin
+        if (!rst_n) begin start_s1_300 <= 0; start_s2_300 <= 0; end
+        else begin
+            start_s1_300 <= ctrl_reg[0];
+            start_s2_300 <= start_s1_300;
+        end
+    end
+    wire start_300 = start_s2_300;  // Safe start signal in clk_300 domain
+    // ── END CDC Synchronisers ─────────────────────────────────────────────────
 
     // ── Submodule instantiations ──────────────────────────────────────────────
     AXI_SlaveInterface   #(.BASE_ADDR(BASE_ADDR)) u_axi (
@@ -137,7 +179,8 @@ module OntologySiliconModule #(
         .decomp_done(decomp_done)
     );
     PrimaryDecomposer    #(.MAX_AXIOMS(MAX_AXIOMS),.MAX_VARIABLES(MAX_VARIABLES),.COEFF_WIDTH(COEFF_WIDTH),.POLY_WIDTH(POLY_WIDTH)) u_decomp (
-        .clk(clk_300), .rst_n(rst_n), .start(ctrl_reg[0]),
+        // ANOM-026 FIX: use start_300 (CDC-sync'd ctrl_reg[0])
+        .clk(clk_300), .rst_n(rst_n), .start(start_300),
         .done(decomp_done), .prime_count(prime_count), .error_code(decomp_error),
         .axiom_base_addr(axiom_base_addr), .target_addr(target_addr), .result_base_addr(result_base_addr),
         .s_axis_coeff_tdata(s_axis_tdata[COEFF_WIDTH-1:0]), .s_axis_coeff_tvalid(s_axis_tvalid), .s_axis_coeff_tready(),
@@ -145,7 +188,9 @@ module OntologySiliconModule #(
         .gb_coeff_in(gb_basis_coeff), .gb_coeff_valid(gb_coeff_valid)
     );
     GroebnerBasisEngine  #(.MAX_POLYS(MAX_AXIOMS),.MAX_VARS(MAX_VARIABLES),.COEFF_W(COEFF_WIDTH)) u_gb (
-        .clk(clk_300), .rst_n(rst_n), .start(ctrl_reg[0]),
+        // ANOM-026 FIX: use start_300 (CDC-sync'd ctrl_reg[0])
+        .clk(clk_300), .rst_n(rst_n), .start(start_300),
+
         .done(gb_done), .coeff_out(gb_basis_coeff), .coeff_valid(gb_coeff_valid)
     );
     SemanticDistanceEngine #(.COEFF_WIDTH(COEFF_WIDTH)) u_sem (
@@ -169,7 +214,8 @@ module OntologySiliconModule #(
         .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), .p_margin_min(p_margin_min),
         .d_max(d_max), .d_dot_max(d_dot_max), .r_see_max(r_see_max),
         .tau_s_max(tau_s_max), .pi_max(pi_max), .l_max(l_max), .j_max(j_max),
-        .domain_status(domain_status), .limit_fraction(limit_fraction),
+        // ANOM-001/002 FIX: flat port connections (replaces unpacked array)
+        .domain_status_flat(domain_status_flat), .limit_fraction_flat(limit_fraction_flat),
         .global_hazard(global_hazard), .stability_index(stability_index), .decision(upasl_decision)
     );
     TelemetryAggregator  #(.FIFO_DEPTH(16)) u_tel (
@@ -181,9 +227,10 @@ module OntologySiliconModule #(
         .pmbus_data(tel_pmbus_data), .i2c_data(), .spi_data(), .uart_byte(), .data_valid(tel_data_valid)
     );
     BRAMAxiomStore       #(.DEPTH(BRAM_DEPTH),.WIDTH(BRAM_WIDTH)) u_bram (
-        .clk(clk_100),
-        .addr_a(axiom_base_addr[11:0]), .din_a(bram_din_a), .dout_a(), .we_a(decomp_done), .en_a(1'b1),
-        .addr_b(result_base_addr[11:0]), .dout_b(), .en_b(1'b1)
+        .clk(clk_100), .rst_n(rst_n),
+        .addr_a(axiom_base_addr[11:0]), .din_a(bram_din_a), .dout_a(), .data_valid_a(),
+        .we_a(decomp_done), .en_a(1'b1),
+        .addr_b(result_base_addr[11:0]), .dout_b(), .data_valid_b(), .en_b(1'b1)
     );
     MCPJsonRpcDecoder    u_mcp (
         .clk(clk_100), .rst_n(rst_n),
@@ -199,7 +246,9 @@ module OntologySiliconModule #(
         .power_up_req(power_up_req), .power_down_req(power_down_req),
         .throttle_req(throttle_req), .timing_shift_req(timing_shift_req),
         .evidence_valid(gov_ev_valid), .evidence_data(gov_ev_data), .evidence_ready(gov_ev_ready),
-        .gov_state(gov_state), .fault_cause(gov_fault_cause)
+        .gov_state(gov_state), .fault_cause(gov_fault_cause),
+        // ANOM-020 FIX: connect seq_state for proper POWERUP→RUN transition (spec §5.3)
+        .seq_state_in(seq_state)
     );
     SequencingEngine     #(.MAX_STEPS(16),.MAX_RAILS(MAX_RAILS)) u_seq (
         .clk(clk_100), .rst_n(rst_n),

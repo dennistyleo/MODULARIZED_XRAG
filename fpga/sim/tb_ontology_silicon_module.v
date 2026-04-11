@@ -61,10 +61,9 @@ module tb_ontology_silicon_module;
         .i2c_sda_o(i2c_sda_o), .i2c_sda_oe(i2c_sda_oe),
         .spi_sclk(spi_sclk), .spi_mosi(spi_mosi), .spi_miso(spi_miso), .spi_cs_n(spi_cs_n),
         .uart_rx(uart_rx), .uart_tx(uart_tx), .gpio_in(gpio_in), .gpio_out(gpio_out),
-        .ml_vout('{8{12'd3300}}), .ml_iout('{8{12'd1000}}), .ml_temp('{4{12'd60}}),
-        .ml_eff('{8{32'hD000}}), .ml_ripple('{8{32'd30}}),
-        .ml_droop_mv(32'd50), .ml_overshoot_mv(32'd5), .ml_settling_us(32'd12),
+        // ANOM-003 FIX: Removed 8 non-existent .ml_* ports (caused HDL 9-1206)
         .irq_out(irq_out)
+
     );
 
     // AXI-Lite write task

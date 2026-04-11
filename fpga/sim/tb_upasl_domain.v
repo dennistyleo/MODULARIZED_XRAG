@@ -1,7 +1,8 @@
 // =============================================================================
-// Testbench : tb_upasl_domain.v  | Version: 1.0.0
+// Testbench : tb_upasl_domain.v  | Version: 1.1.0
 // Purpose   : Verifies all 6 UPASL domain evaluations, limit fractions,
 //             stability index, and decision output.
+// ANOM-005 FIX: Updated to flat packed port connections post-Layer-1 RTL fix.
 // =============================================================================
 `timescale 1ns/1ps
 
@@ -20,10 +21,20 @@ module tb_upasl_domain;
     reg [31:0] loop_latency, jitter;
     reg [5:0]  evidence_valid;
 
-    wire [2:0]  domain_status [0:5];
-    wire [31:0] limit_fraction [0:5];
-    wire [31:0] global_hazard, stability_index;
-    wire [1:0]  decision;
+    // ANOM-005 FIX: Flat wires matching new port declaration
+    wire [17:0]  domain_status_flat;   // NUM_DOMAINS*3 = 18 bits
+    wire [191:0] limit_fraction_flat;  // NUM_DOMAINS*32 = 192 bits
+    wire [31:0]  global_hazard, stability_index;
+    wire [1:0]   decision;
+
+    // Helper aliases for readable assertions (domain_status_flat[d*3+2 -: 3])
+    wire [2:0]  ds0 = domain_status_flat[ 2: 0];
+    wire [2:0]  ds1 = domain_status_flat[ 5: 3];
+    wire [2:0]  ds2 = domain_status_flat[ 8: 6];
+    wire [2:0]  ds3 = domain_status_flat[11: 9];
+    wire [2:0]  ds4 = domain_status_flat[14:12];
+    wire [2:0]  ds5 = domain_status_flat[17:15];
+    wire [31:0] lf0 = limit_fraction_flat[31:0];   // domain 0 limit fraction
 
     UPASLDomainEngine #(.NUM_DOMAINS(6), .ADC_WIDTH(12)) dut (
         .clk(clk), .rst_n(rst_n),
@@ -38,7 +49,9 @@ module tb_upasl_domain;
         .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), .p_margin_min(p_margin_min),
         .d_max(d_max), .d_dot_max(d_dot_max), .r_see_max(r_see_max),
         .tau_s_max(tau_s_max), .pi_max(pi_max), .l_max(l_max), .j_max(j_max),
-        .domain_status(domain_status), .limit_fraction(limit_fraction),
+        // ANOM-005 FIX: flat buses replacing unpacked array ports
+        .domain_status_flat(domain_status_flat),
+        .limit_fraction_flat(limit_fraction_flat),
         .global_hazard(global_hazard), .stability_index(stability_index), .decision(decision)
     );
 
@@ -64,32 +77,33 @@ module tb_upasl_domain;
         repeat(4) @(posedge clk); rst_n <= 1; repeat(3) @(posedge clk);
 
         // TC-U01: All domains SAT
-        check(domain_status[0]==3'b001, "TC-U01 Thermal SAT");
-        check(domain_status[1]==3'b001, "TC-U01 Mech SAT");
-        check(domain_status[2]==3'b001, "TC-U01 EPS SAT");
-        check(domain_status[3]==3'b001, "TC-U01 Radiation SAT");
-        check(domain_status[4]==3'b001, "TC-U01 Fluid SAT");
-        check(domain_status[5]==3'b001, "TC-U01 Info SAT");
+        check(ds0==3'b001, "TC-U01 Thermal SAT");
+        check(ds1==3'b001, "TC-U01 Mech SAT");
+        check(ds2==3'b001, "TC-U01 EPS SAT");
+        check(ds3==3'b001, "TC-U01 Radiation SAT");
+        check(ds4==3'b001, "TC-U01 Fluid SAT");
+        check(ds5==3'b001, "TC-U01 Info SAT");
         check(decision == 2'b10, "TC-U01 Decision=ALLOW");
 
         // TC-U02: Thermal violation
         temp_hotspot <= 12'd1300;  // > t_max(1200)
         repeat(3) @(posedge clk);
-        check(domain_status[0]==3'b010, "TC-U02 Thermal VIOL");
+        check(ds0==3'b010, "TC-U02 Thermal VIOL");
         check(decision == 2'b00, "TC-U02 Decision=REFUSE on violation");
 
         // TC-U03: EPS undetermined (evidence_valid[2]=0)
         temp_hotspot <= 12'd60; evidence_valid <= 6'b111011;
         repeat(3) @(posedge clk);
-        check(domain_status[2]==3'b100, "TC-U03 EPS UND");
+        check(ds2==3'b100, "TC-U03 EPS UND");
         check(decision == 2'b00, "TC-U03 Decision=REFUSE on UND");
 
         // TC-U04: Limit fraction non-zero when SAT
         evidence_valid <= 6'b111111;
         repeat(3) @(posedge clk);
-        check(limit_fraction[0] > 0, "TC-U04 Thermal limit_fraction >0");
-        check(stability_index > 0,   "TC-U04 Stability index >0");
+        check(lf0 > 0,           "TC-U04 Thermal limit_fraction >0");
+        check(stability_index > 0, "TC-U04 Stability index >0");
 
         $display("=== tb_upasl_domain complete ==="); $finish;
     end
 endmodule
+

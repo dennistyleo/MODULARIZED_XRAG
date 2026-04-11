@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : governance_fsm.v  | Version: 1.0.0  | M-04
+// Module  : governance_fsm.v  | Version: 1.1.0  | M-04
 // Purpose : Core AI-PMC power governance algorithm.
 //           States: BOOT→IDLE→POWERUP→RUN→POWEROFF→FAULT→SAFE
 //           Guardrails checked every clock. Evidence emitted on every transition.
@@ -28,7 +28,9 @@ module GovernanceFSM #(
     input  wire        evidence_ready,
     // Status
     output reg [2:0]   gov_state,
-    output reg [31:0]  fault_cause
+    output reg [31:0]  fault_cause,
+    // Sequencing state (for POWERUP→RUN transition per spec §5.3)
+    input  wire [2:0]  seq_state_in
 );
 
     // State encoding (matches register map)
@@ -65,11 +67,14 @@ module GovernanceFSM #(
 
     // ── Evidence emission task ─────────────────────────────────────────────────
     // Format: {ts_ns[31:0], event_id[63:0], state_id[31:0], severity[31:0], payload[95:0]}
-    localparam [63:0] EV_BOOT       = 64'h455649442E424F4F54;  // "EVID.BOOT"
-    localparam [63:0] EV_STATE_ENT  = 64'h455649442E53544154;  // "EVID.STAT"
-    localparam [63:0] EV_GR_TRIP    = 64'h455649442E47524454;  // "EVID.GRDT"
-    localparam [63:0] EV_THROTTLE   = 64'h455649442E54485254;  // "EVID.THRT"
-    localparam [63:0] EV_TIMING     = 64'h455649442E54494D47;  // "EVID.TIMG"
+    // ANOM-018 FIX (Option B): Event IDs are 9-byte ASCII ("EVID.XXXX" = 72 bits).
+    // Truncated to 64-bit by dropping the leading 'E' (0x45) byte.
+    // Full strings documented in spec/25_aipmc_rtl_spec.md §5.2.
+    localparam [63:0] EV_BOOT_ID      = 64'h5649442E424F4F54;  // "VID.BOOT" (was EVID.BOOT)
+    localparam [63:0] EV_STATE_ENT_ID = 64'h5649442E53544154;  // "VID.STAT"
+    localparam [63:0] EV_GR_TRIP_ID   = 64'h5649442E47524454;  // "VID.GRDT"
+    localparam [63:0] EV_THROTTLE_ID  = 64'h5649442E54485254;  // "VID.THRT"
+    localparam [63:0] EV_TIMING_ID    = 64'h5649442E54494D47;  // "VID.TIMG"
 
     task emit_ev;
         input [63:0] event_id;
@@ -96,17 +101,17 @@ module GovernanceFSM #(
 
             case (state)
                 S_BOOT: begin
-                    emit_ev(EV_BOOT, 32'd0, 32'd0, {64'd0, profile_id});
+                    emit_ev(EV_BOOT_ID, 32'd0, 32'd0, {64'd0, profile_id});
                     state <= S_IDLE;
                 end
 
                 S_IDLE: begin
                     if (guardrail_trip) begin
                         fault_cause <= gr_reason;
-                        emit_ev(EV_GR_TRIP, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
+                        emit_ev(EV_GR_TRIP_ID, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
                         state <= S_FAULT;
                     end else if (power_up_req) begin
-                        emit_ev(EV_STATE_ENT, {29'd0,S_POWERUP}, 32'd0, {64'd0 ,{29'd0,S_IDLE}});
+                        emit_ev(EV_STATE_ENT_ID, {29'd0,S_POWERUP}, 32'd0, {64'd0 ,{29'd0,S_IDLE}});
                         state <= S_POWERUP;
                     end
                 end
@@ -114,11 +119,12 @@ module GovernanceFSM #(
                 S_POWERUP: begin
                     if (guardrail_trip) begin
                         fault_cause <= gr_reason;
-                        emit_ev(EV_GR_TRIP, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
+                        emit_ev(EV_GR_TRIP_ID, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
                         state <= S_FAULT;
-                    end else if (timeouts_ms != 0) begin
-                        // Sequencing engine signals RUN-ready via timeouts_ms pulse
-                        emit_ev(EV_STATE_ENT, {29'd0,S_RUN}, 32'd0, 96'd0);
+                    end else if (seq_state_in == 3'd4) begin
+                        // ANOM-020 FIX: Transition to RUN only when sequencing is DONE
+                        // (SS_DONE=3'd4) per spec/25_aipmc_rtl_spec.md §5.3
+                        emit_ev(EV_STATE_ENT_ID, {29'd0,S_RUN}, 32'd0, 96'd0);
                         state <= S_RUN;
                     end
                 end
@@ -126,28 +132,29 @@ module GovernanceFSM #(
                 S_RUN: begin
                     if (guardrail_trip) begin
                         fault_cause <= gr_reason;
-                        emit_ev(EV_GR_TRIP, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
+                        emit_ev(EV_GR_TRIP_ID, {29'd0,S_FAULT}, 32'd2, {64'd0, gr_reason});
                         state <= S_FAULT;
                     end else begin
                         if (throttle_req != 0 && allowed_actions[0])
-                            emit_ev(EV_THROTTLE, {29'd0,S_RUN}, 32'd0, {88'd0, throttle_req});
+                            emit_ev(EV_THROTTLE_ID, {29'd0,S_RUN}, 32'd0, {88'd0, throttle_req});
                         if (timing_shift_req != 0 && allowed_actions[1])
-                            emit_ev(EV_TIMING, {29'd0,S_RUN}, 32'd0, {88'd0, timing_shift_req});
+                            emit_ev(EV_TIMING_ID, {29'd0,S_RUN}, 32'd0, {88'd0, timing_shift_req});
                         if (power_down_req) begin
-                            emit_ev(EV_STATE_ENT, {29'd0,S_POWEROFF}, 32'd0, 96'd0);
+                            emit_ev(EV_STATE_ENT_ID, {29'd0,S_POWEROFF}, 32'd0, 96'd0);
+
                             state <= S_POWEROFF;
                         end
                     end
                 end
 
                 S_POWEROFF: begin
-                    emit_ev(EV_STATE_ENT, {29'd0,S_IDLE}, 32'd0, 96'd0);
+                    emit_ev(EV_STATE_ENT_ID, {29'd0,S_IDLE}, 32'd0, 96'd0);
                     state <= S_IDLE;
                 end
 
                 S_FAULT: begin
                     if (!guardrail_trip) begin
-                        emit_ev(EV_STATE_ENT, {29'd0,S_SAFE}, 32'd1, {64'd0, fault_cause});
+                        emit_ev(EV_STATE_ENT_ID, {29'd0,S_SAFE}, 32'd1, {64'd0, fault_cause});
                         state <= S_SAFE;
                     end
                     // Remain in FAULT while guardrail active
@@ -155,7 +162,7 @@ module GovernanceFSM #(
 
                 S_SAFE: begin
                     if (power_up_req && !guardrail_trip) begin
-                        emit_ev(EV_STATE_ENT, {29'd0,S_POWERUP}, 32'd0, 96'd0);
+                        emit_ev(EV_STATE_ENT_ID, {29'd0,S_POWERUP}, 32'd0, 96'd0);
                         state <= S_POWERUP;
                     end
                 end

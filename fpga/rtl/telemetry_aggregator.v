@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : telemetry_aggregator.v  | Version: 1.0.0
+// Module  : telemetry_aggregator.v  | Version: 1.1.0
 // Purpose : Multi-bus telemetry capture: PMBus/I2C/SPI/UART/GPIO.
 //           Each bus has a small FIFO and a bit-bang state machine.
 //           Output: 32-bit decoded measurement per bus + data_valid strobe.
@@ -113,7 +113,10 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     assign uart_tx = 1'b1;  // No transmitter in this version
 
     // ── GPIO passthrough ──────────────────────────────────────────────────────
-    always @(posedge clk) gpio_out <= gpio_in;  // Mirror until host writes gpio_ctrl
+    // ANOM-010 FIX: Added rst_n — gpio_out now 0x00 during reset (was undefined X)
+    always @(posedge clk or negedge rst_n)
+        if (!rst_n) gpio_out <= 8'h00;
+        else        gpio_out <= gpio_in;  // Mirror until host writes gpio_ctrl
 
 endmodule
 `default_nettype wire

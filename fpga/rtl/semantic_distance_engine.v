@@ -1,5 +1,5 @@
 // =============================================================================
-// Module  : semantic_distance_engine.v  | Version: 1.0.0
+// Module  : semantic_distance_engine.v  | Version: 1.1.0
 // Purpose : Q16.16 fixed-point semantic distance between two axiom vectors.
 //           Distance = Σ|a_i - b_i|² / N  (Manhattan-squared normalised).
 //           Pipelined: 4-stage, 1 result per clock at steady state.
@@ -59,8 +59,17 @@ module SemanticDistanceEngine #(
             end
 
             // Stage 4: sum and scale to Q16.16
+            // ANOM-012 FIX A: non-blocking <= (was blocking =)
+            // ANOM-012 FIX B: parameterised loop (was hardcoded sq[0]+...+sq[7])
             if (valid_s3) begin
-                dist_acc = sq[0]+sq[1]+sq[2]+sq[3]+sq[4]+sq[5]+sq[6]+sq[7];
+                begin : sum_loop
+                    integer k;
+                    reg [31:0] acc;
+                    acc = 32'd0;
+                    for (k = 0; k < VECTOR_DIM; k = k + 1)
+                        acc = acc + {16'd0, sq[k]};
+                    dist_acc <= acc;  // non-blocking write to registered output
+                end
                 semantic_dist <= (dist_acc << 16) / VECTOR_DIM;  // normalise
             end
         end

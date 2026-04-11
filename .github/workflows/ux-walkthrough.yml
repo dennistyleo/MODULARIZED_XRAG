@@ -1,0 +1,92 @@
+name: UX Walkthrough — SaaS Production Grade
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'   # Daily regression at 02:00 UTC
+  workflow_dispatch:
+
+env:
+  PYTHONUNBUFFERED: "1"
+  SOVEREIGN_BASE_URL: "http://localhost:8080"
+
+jobs:
+  walkthrough:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-rerunfailures pytest-html "pytest-playwright>=0.4" pillow numpy
+          playwright install chromium --with-deps
+
+      - name: Start Sovereign backend
+        run: |
+          python app.py &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          for i in {1..15}; do
+            curl -sf http://localhost:8080/api/health && break || sleep 2
+          done
+          curl -sf http://localhost:8080/api/health || (echo "Server failed to start"; exit 1)
+
+      - name: Run UX walkthrough
+        env:
+          # On main branch push: refresh visual baselines
+          UPDATE_SNAPSHOTS: ${{ github.ref_name == 'main' && github.event_name == 'push' }}
+        run: |
+          chmod +x scripts/run_ux_walkthrough.sh
+          ./scripts/run_ux_walkthrough.sh
+
+      - name: Stop backend
+        if: always()
+        run: kill $APP_PID 2>/dev/null || true
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-walkthrough-report
+          path: reports/ux_walkthrough_report.html
+          retention-days: 30
+
+      - name: Upload failure videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walkthrough-failure-videos
+          path: test_videos/
+          retention-days: 7
+
+      - name: Upload snapshot diffs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-diffs
+          path: tests/snapshots/
+          retention-days: 7
+
+      - name: Commit updated baselines (main branch only)
+        if: >
+          github.ref_name == 'main' &&
+          github.event_name == 'push' &&
+          success()
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/snapshots/ || true
+          git diff --staged --quiet || git commit -m "chore: update visual regression baselines [skip ci]"
+          git push || true
