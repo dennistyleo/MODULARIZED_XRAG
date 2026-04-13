@@ -41,3 +41,4 @@ static/*.mp4
 fpga/testbench.vvp
 debug.py
 test_*.py
+DEDUCTION_DOC/
