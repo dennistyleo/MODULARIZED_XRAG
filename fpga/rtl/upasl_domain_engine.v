@@ -1,9 +1,7 @@
 // =============================================================================
 // Module  : upasl_domain_engine.v  | Version: 1.3.0
-// Purpose : UPASL 6-Domain Engine (Thermal / Mechanical / EPS / Radiation /
-//           Fluid / Information). Evaluates SAT/VIOL/UND per domain.
-//           All arithmetic in Q16.16 fixed-point (65536 = 1.0).
-// Language: Pure Verilog-2001 (NO SystemVerilog features)
+// Purpose : UPASL 6-Domain Engine
+// Language: Pure Verilog-2001
 // =============================================================================
 `timescale 1ns/1ps
 `default_nettype none
@@ -13,23 +11,17 @@ module upasl_domain_engine #(
     parameter ADC_WIDTH   = 12
 )(
     input  wire clk, rst_n,
-    
-    // Telemetry inputs
     input  wire [ADC_WIDTH-1:0] temp_hotspot, temp_rate,
     input  wire [ADC_WIDTH-1:0] stress_mech, stress_rate,
     input  wire [ADC_WIDTH-1:0] bus_voltage, bus_current, battery_soc,
     input  wire [ADC_WIDTH-1:0] dose_rate, fill_fraction,
     input  wire [31:0]          loop_latency, jitter,
     input  wire [NUM_DOMAINS-1:0] evidence_valid,
-    
-    // Threshold configuration
     input  wire [31:0] t_max, t_dot_max, h_t_min,
     input  wire [31:0] sigma_max, sigma_dot_max,
     input  wire [31:0] v_min, i_dot_max, soc_min,
     input  wire [31:0] d_max, tau_s_max,
     input  wire [31:0] l_max, j_max,
-    
-    // Flattened packed buses (NO unpacked arrays in ports)
     output wire [NUM_DOMAINS*3-1:0]  domain_status_flat,
     output wire [NUM_DOMAINS*32-1:0] limit_fraction_flat,
     output reg  [31:0] global_hazard,
@@ -37,16 +29,14 @@ module upasl_domain_engine #(
     output reg  [1:0]  decision
 );
 
-    // Local parameters
     localparam SAT  = 3'b001;
     localparam VIOL = 3'b010;
     localparam UND  = 3'b100;
     localparam DEC_REFUSE = 2'b00;
     localparam DEC_LIMIT  = 2'b01;
     localparam DEC_ALLOW  = 2'b10;
-    localparam ONE_Q = 32'h0001_0000;  // 1.0 in Q16.16
+    localparam ONE_Q = 32'h0001_0000;
 
-    // Zero-extended ADC inputs (32-bit)
     wire [31:0] temp_hotspot_32, temp_rate_32;
     wire [31:0] stress_mech_32, stress_rate_32;
     wire [31:0] bus_voltage_32, bus_current_32, battery_soc_32;
@@ -62,7 +52,6 @@ module upasl_domain_engine #(
     assign dose_rate_32    = {{32-ADC_WIDTH{1'b0}}, dose_rate};
     assign fill_fraction_32= {{32-ADC_WIDTH{1'b0}}, fill_fraction};
 
-    // Domain status evaluation
     wire th_sat, th_und, th_viol;
     wire mc_sat, mc_und, mc_viol;
     wire ep_sat, ep_und, ep_viol;
@@ -97,7 +86,6 @@ module upasl_domain_engine #(
     wire any_viol = th_viol | mc_viol | ep_viol | rd_viol | fl_viol | in_viol;
     wire any_und  = th_und  | mc_und  | ep_und  | rd_und  | fl_und  | in_und;
 
-    // Safe division helper (pure Verilog-2001)
     function [31:0] safe_div_q1616;
         input [31:0] num, den;
     begin
@@ -110,24 +98,20 @@ module upasl_domain_engine #(
     end
     endfunction
 
-    // Internal arrays (allowed inside module, just not in port list)
     reg [2:0]  ds [0:NUM_DOMAINS-1];
     reg [31:0] lf [0:NUM_DOMAINS-1];
     integer idx;
 
-    // Sequential logic
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             global_hazard   <= 32'd0;
             stability_index <= 32'd0;
             decision        <= DEC_REFUSE;
-            
-            for (idx <= 0; idx < NUM_DOMAINS; idx <= idx + 1) begin
+            for (idx = 0; idx < NUM_DOMAINS; idx = idx + 1) begin
                 ds[idx] <= SAT;
                 lf[idx] <= 32'd0;
             end
         end else begin
-            // Domain status
             ds[0] <= th_und ? UND : th_viol ? VIOL : SAT;
             ds[1] <= mc_und ? UND : mc_viol ? VIOL : SAT;
             ds[2] <= ep_und ? UND : ep_viol ? VIOL : SAT;
@@ -135,7 +119,6 @@ module upasl_domain_engine #(
             ds[4] <= fl_und ? UND : fl_viol ? VIOL : SAT;
             ds[5] <= in_und ? UND : in_viol ? VIOL : SAT;
 
-            // Limit fractions
             lf[0] <= safe_div_q1616(t_max - temp_hotspot_32, t_max - h_t_min);
             lf[1] <= safe_div_q1616(sigma_max - stress_mech_32, sigma_max);
             lf[2] <= safe_div_q1616(bus_voltage_32 - v_min, 32'hFFFF_FFFF - v_min);
@@ -143,11 +126,9 @@ module upasl_domain_engine #(
             lf[4] <= safe_div_q1616(tau_s_max - fill_fraction_32, tau_s_max);
             lf[5] <= safe_div_q1616(l_max - loop_latency, l_max);
 
-            // Stability index = mean of limit fractions
             stability_index <= (lf[0] + lf[1] + lf[2] + lf[3] + lf[4] + lf[5]) / NUM_DOMAINS;
             global_hazard <= ONE_Q - stability_index;
 
-            // Decision
             if (any_viol || any_und)
                 decision <= DEC_REFUSE;
             else if (stability_index > 32'h0000_8000)
@@ -157,7 +138,7 @@ module upasl_domain_engine #(
         end
     end
 
-    // Flatten internal arrays to output ports (Verilog-2001 generate)
+    // ✅ CORRECT: Generate block with continuous assignment (= not <=)
     genvar gv;
     generate
         for (gv = 0; gv < NUM_DOMAINS; gv = gv + 1) begin : flatten_outputs
