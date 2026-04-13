@@ -77,7 +77,8 @@ module EvidenceEncoder #(
     reg emit_summary;
     always @(posedge clk or negedge rst_n)
         if (!rst_n) emit_summary <= 0;
-        else emit_summary <= (dropped_count > 0) && !ev_full;
+        // FIX Bug 10: guard on !ev_valid — prevents SUMMARY colliding with new data record
+        else emit_summary <= (dropped_count > 0) && !ev_full && !ev_valid;
 
     // ── Read / serialisation side ─────────────────────────────────────────────
     // Burst 256-bit record as 4 × 64-bit beats on m_axis

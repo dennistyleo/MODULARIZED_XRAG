@@ -29,6 +29,11 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     output reg  [7:0]  uart_byte,
     output reg         data_valid
 );
+    // FIX Bug 6: per-bus valid strobes combined in one place — avoids multiple drivers on data_valid
+    reg i2c_valid, spi_valid, uart_valid;
+    always @(posedge clk or negedge rst_n)
+        if (!rst_n) data_valid <= 0;
+        else        data_valid <= i2c_valid | spi_valid | uart_valid;
     // ── PMBus / I2C bit-bang receiver ─────────────────────────────────────────
     // Detects START, samples 8-bit data, checks ACK
     reg [7:0]  i2c_shift; reg [3:0] i2c_bit_cnt;
@@ -50,10 +55,10 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
                 if (i2c_bit_cnt == 4'd7) begin
                     i2c_data  <= {24'd0, i2c_shift};
                     pmbus_data <= {24'd0, i2c_shift};
-                    data_valid <= 1;
+                    i2c_valid  <= 1;
                     i2c_bit_cnt <= 0;
                 end
-            end else data_valid <= 0;
+            end else i2c_valid <= 0;
         end
     end
 
@@ -65,15 +70,17 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             spi_shift <= 0; spi_bit <= 0; spi_data <= 0;
-            spi_miso <= 0; spi_sclk_prev <= 0;
+            spi_miso <= 0; spi_sclk_prev <= 0; spi_valid <= 0;
         end else begin
+            spi_valid     <= 0;
             spi_sclk_prev <= spi_sclk;
             if (!spi_cs_n && spi_rising) begin
                 spi_shift <= {spi_shift[6:0], spi_mosi};
-                spi_bit <= spi_bit + 1;
+                spi_bit   <= spi_bit + 1;
                 if (spi_bit == 4'd7) begin
                     spi_data  <= {24'd0, spi_shift};
                     spi_miso  <= spi_shift[7];  // echo MSB (loopback test mode)
+                    spi_valid <= 1;
                 end
             end
         end
@@ -90,8 +97,9 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             baud_cnt <= 0; uart_bit_cnt <= 0; uart_shift <= 0;
-            uart_byte <= 0; uart_rx_prev <= 1; uart_active <= 0;
+            uart_byte <= 0; uart_rx_prev <= 1; uart_active <= 0; uart_valid <= 0;
         end else begin
+            uart_valid   <= 0;
             uart_rx_prev <= uart_rx;
             if (!uart_active && uart_start) begin
                 uart_active <= 1; baud_cnt <= BAUD_DIV/2; uart_bit_cnt <= 0;
@@ -100,11 +108,12 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
                 if (baud_cnt == 0) begin
                     baud_cnt <= BAUD_DIV;
                     if (uart_bit_cnt < 8) begin
-                        uart_shift <= {uart_rx, uart_shift[7:1]};
+                        uart_shift   <= {uart_rx, uart_shift[7:1]};
                         uart_bit_cnt <= uart_bit_cnt + 1;
                     end else begin
-                        uart_byte <= uart_shift;
+                        uart_byte   <= uart_shift;
                         uart_active <= 0;
+                        uart_valid  <= 1;
                     end
                 end
             end

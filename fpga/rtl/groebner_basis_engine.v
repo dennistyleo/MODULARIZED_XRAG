@@ -26,17 +26,21 @@ module GroebnerBasisEngine #(
     localparam GB_REDUCE = 2'd2;
     localparam GB_DONE   = 2'd3;
 
-    // S-polynomial pair storage (BRAM-inferred)
+    // FIX Bug 4: 2D arrays flattened to 1D for BRAM inference (Vivado 2021+)
+    // basis_flat[p * MAX_VARS + v]  replaces  basis_mat[p][v]
+    // pipe_flat[lane * 4 + stage]   replaces  pipe[lane][stage]
     (* ram_style = "block" *)
-    reg [COEFF_W-1:0] basis_mat [0:MAX_POLYS-1][0:MAX_VARS-1];
+    reg [COEFF_W-1:0] basis_flat [0:MAX_POLYS*MAX_VARS-1];
 
-    // Systolic pipeline registers (LANE_COUNT stages × 4 pipeline stages)
-    reg [COEFF_W-1:0] pipe [0:LANE_COUNT-1][0:3];
+    reg [COEFF_W-1:0] pipe_flat [0:LANE_COUNT*4-1];
 
     reg [1:0]  state;
     reg [4:0]  pair_idx;
     reg [3:0]  var_idx;
     reg [15:0] reduce_iter;
+
+    // FIX Bug 3: integer loop variables at module scope (not inside begin: blocks)
+    integer p, v, lane;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -50,12 +54,11 @@ module GroebnerBasisEngine #(
                     if (start) begin
                         pair_idx <= 0; var_idx <= 0; reduce_iter <= 0;
                         // Seed initial basis from identity-like coefficients
-                        begin : seed_init
-                            integer p, v;
-                            for (p = 0; p < MAX_POLYS; p = p + 1)
-                                for (v = 0; v < MAX_VARS; v = v + 1)
-                                    basis_mat[p][v] <= (p == v) ? 32'h0001_0000 : 32'd0; // Q16.16 identity
-                        end
+                begin : seed_init
+                        for (p = 0; p < MAX_POLYS; p = p + 1)
+                            for (v = 0; v < MAX_VARS; v = v + 1)
+                                basis_flat[p * MAX_VARS + v] <= (p == v) ? 32'h0001_0000 : 32'd0;
+                end
                         state <= GB_REDUCE;
                     end
                 end
@@ -63,23 +66,22 @@ module GroebnerBasisEngine #(
                 GB_REDUCE: begin
                     // Systolic F4 step: 4 parallel S-polys reduced this cycle
                     begin : systolic_step
-                        integer lane;
                         for (lane = 0; lane < LANE_COUNT; lane = lane + 1) begin
                             // Stage 1: load pair
-                            pipe[lane][0] <= basis_mat[(pair_idx + lane) % MAX_POLYS][var_idx];
+                            pipe_flat[lane*4+0] <= basis_flat[(pair_idx + lane) % MAX_POLYS * MAX_VARS + var_idx];
                             // Stage 2: cross-term reduction
-                            pipe[lane][1] <= pipe[lane][0]
-                                           - basis_mat[(pair_idx + lane + 1) % MAX_POLYS][var_idx];
+                            pipe_flat[lane*4+1] <= pipe_flat[lane*4+0]
+                                           - basis_flat[(pair_idx + lane + 1) % MAX_POLYS * MAX_VARS + var_idx];
                             // Stage 3: normalise (divide by leading coeff via shift)
-                            pipe[lane][2] <= (pipe[lane][1] >>> 1);
+                            pipe_flat[lane*4+2] <= (pipe_flat[lane*4+1] >>> 1);
                             // Stage 4: writeback reduced coefficient
-                            pipe[lane][3] <= pipe[lane][2];
-                            basis_mat[(pair_idx + lane) % MAX_POLYS][var_idx] <= pipe[lane][3];
+                            pipe_flat[lane*4+3] <= pipe_flat[lane*4+2];
+                            basis_flat[(pair_idx + lane) % MAX_POLYS * MAX_VARS + var_idx] <= pipe_flat[lane*4+3];
                         end
                     end
 
                     // Stream latest basis coefficient out
-                    coeff_out   <= basis_mat[pair_idx][var_idx];
+                    coeff_out   <= basis_flat[pair_idx * MAX_VARS + var_idx];
                     coeff_valid <= 1;
 
                     // Advance indices
@@ -98,7 +100,7 @@ module GroebnerBasisEngine #(
                 GB_DONE: begin
                     done <= 1;
                     // Stream final basis row
-                    coeff_out   <= basis_mat[0][0];
+                    coeff_out   <= basis_flat[0]; // basis_flat[0*MAX_VARS+0]
                     coeff_valid <= 1;
                     state <= GB_IDLE;
                 end

@@ -30,8 +30,8 @@ module UPASLDomainEngine #(
     // ANOM-001/002 FIX: Flattened to packed buses (Verilog-2001 synthesis compliant)
     // domain_status_flat[d*3+2 -: 3] = domain_status[d]
     // limit_fraction_flat[d*32+31 -: 32] = limit_fraction[d]
-    output reg  [NUM_DOMAINS*3-1:0]  domain_status_flat,
-    output reg  [NUM_DOMAINS*32-1:0] limit_fraction_flat,
+    output wire [NUM_DOMAINS*3-1:0]  domain_status_flat,
+    output wire [NUM_DOMAINS*32-1:0] limit_fraction_flat,
     output reg  [31:0] global_hazard,
     output reg  [31:0] stability_index,
     output reg  [1:0]  decision
@@ -94,23 +94,18 @@ module UPASLDomainEngine #(
     wire any_viol = th_viol | mc_viol | ep_viol | rd_viol | fl_viol | in_viol;
     wire any_und  = th_und  | mc_und  | ep_und  | rd_und  | fl_und  | in_und;
 
+    // ── Internal registers — module scope (ANOM-001/002 FIX) ─────────────────
+    reg [2:0]  ds [0:NUM_DOMAINS-1];
+    reg [31:0] lf [0:NUM_DOMAINS-1];
+
     // ── Sequential register update ────────────────────────────────────────────
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            begin : rst_blk
-                integer d;
-                for (d=0; d<NUM_DOMAINS; d=d+1) begin
-                    domain_status[d]  <= UND;
-                    limit_fraction[d] <= 0;
-                end
-            end
-            global_hazard <= 0; stability_index <= 0; decision <= DEC_REFUSE;
+            global_hazard   <= 32'd0;
+            stability_index <= 32'd0;
+            decision        <= DEC_REFUSE;
         end else begin
-            // Domain status
-            // Internal status regs (kept for readability; flattened to ports below)
-            // ANOM-001 FIX: internal regs ds[] and lf[] replace direct port array writes
-            reg [2:0]  ds [0:NUM_DOMAINS-1];
-            reg [31:0] lf [0:NUM_DOMAINS-1];
+            // Domain status — written to module-scope ds[]
             ds[0] <= th_und ? UND : th_viol ? VIOL : SAT;
             ds[1] <= mc_und ? UND : mc_viol ? VIOL : SAT;
             ds[2] <= ep_und ? UND : ep_viol ? VIOL : SAT;
@@ -118,36 +113,27 @@ module UPASLDomainEngine #(
             ds[4] <= fl_und ? UND : fl_viol ? VIOL : SAT;
             ds[5] <= in_und ? UND : in_viol ? VIOL : SAT;
 
-            // Flatten domain_status to packed output
-            domain_status_flat[ 2: 0] <= ds[0]; domain_status_flat[ 5: 3] <= ds[1];
-            domain_status_flat[ 8: 6] <= ds[2]; domain_status_flat[11: 9] <= ds[3];
-            domain_status_flat[14:12] <= ds[4]; domain_status_flat[17:15] <= ds[5];
-
-            // Limit fractions — ANOM-002 FIX: write to lf[] then flatten
+            // Limit fractions — written to module-scope lf[]
             lf[0] <= safe_div_q1616(
                 {20'd0, t_max[ADC_WIDTH-1:0] - temp_hotspot},
                 {20'd0, t_max[ADC_WIDTH-1:0] - h_t_min[ADC_WIDTH-1:0]});
             lf[1] <= safe_div_q1616(
-                {20'd0, sigma_max[ADC_WIDTH-1:0] - stress_mech}, {20'd0, sigma_max[ADC_WIDTH-1:0]});
+                {20'd0, sigma_max[ADC_WIDTH-1:0] - stress_mech},
+                {20'd0, sigma_max[ADC_WIDTH-1:0]});
             lf[2] <= safe_div_q1616(
                 {20'd0, bus_voltage - v_min[ADC_WIDTH-1:0]},
                 {20'd0, {ADC_WIDTH{1'b1}} - v_min[ADC_WIDTH-1:0]});
             lf[3] <= safe_div_q1616(
-                {20'd0, d_max[ADC_WIDTH-1:0] - dose_rate}, {20'd0, d_max[ADC_WIDTH-1:0]});
+                {20'd0, d_max[ADC_WIDTH-1:0] - dose_rate},
+                {20'd0, d_max[ADC_WIDTH-1:0]});
             lf[4] <= safe_div_q1616(
                 {20'd0, tau_s_max[ADC_WIDTH-1:0] - fill_fraction},
                 {20'd0, tau_s_max[ADC_WIDTH-1:0]});
             lf[5] <= safe_div_q1616(
                 l_max - loop_latency, l_max);
 
-            // Flatten limit_fractions to packed output
-            limit_fraction_flat[ 31:  0] <= lf[0]; limit_fraction_flat[ 63: 32] <= lf[1];
-            limit_fraction_flat[ 95: 64] <= lf[2]; limit_fraction_flat[127: 96] <= lf[3];
-            limit_fraction_flat[159:128] <= lf[4]; limit_fraction_flat[191:160] <= lf[5];
-
             // Stability index = mean of limit fractions (UPASL §11)
             stability_index <= (lf[0] + lf[1] + lf[2] + lf[3] + lf[4] + lf[5]) / 6;
-
 
             // Global hazard = inverse of stability
             global_hazard <= 32'h0001_0000 - stability_index;
@@ -157,6 +143,15 @@ module UPASLDomainEngine #(
                         (stability_index > 32'h0000_8000) ? DEC_ALLOW : DEC_LIMIT;
         end
     end
+
+    // ── Flatten internal arrays to output ports (NAMED generate block) ─────────
+    genvar g;
+    generate
+        for (g = 0; g < NUM_DOMAINS; g = g + 1) begin : flatten_outputs
+            assign domain_status_flat[g*3+2 -: 3]      = ds[g];
+            assign limit_fraction_flat[g*32+31 -: 32]  = lf[g];
+        end
+    endgenerate
 
 endmodule
 `default_nettype wire

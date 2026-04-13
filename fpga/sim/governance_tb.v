@@ -95,9 +95,12 @@ module governance_tb;
 
     FeatureExtractor #(.ADC_WIDTH(12)) u_feat (
         .clk(clk), .rst_n(rst_n),
-        .vout({8{vout0}}), .iout({8{12'd100}}), .temp_in({4{12'd35}}),
+        .vout_flat({8{vout0}}),           // 96-bit flat  (8 lanes × 12-bit)
+        .iout_flat({8{12'd100}}),         // 96-bit flat
+        .temp_flat({4{12'd35}}),          // 48-bit flat  (4 sensors × 12-bit)
+        .eff_flat({8{16'hD000}}),         // 128-bit flat (8 lanes × 16-bit)
+        .rip_flat({8{16'd30}}),           // 128-bit flat
         .droop_mv(droop_mv[15:0]), .overshoot_mv(16'd5), .settling_us(16'd12),
-        .efficiency({8{16'hD000}}), .ripple_mv({8{16'd30}}),
         .capture(capture), .feature_vector(feat_vec),
         .feature_valid(feat_valid), .feature_ready(1'b1)
     );

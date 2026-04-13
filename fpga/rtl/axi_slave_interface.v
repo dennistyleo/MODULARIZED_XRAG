@@ -45,10 +45,10 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
     output reg  [31:0] tau_s_max, pi_max, l_max, j_max,
     output reg  [31:0] gov_profile_id, gov_timeout_ms, gov_thresholds,
     output reg  [31:0] gov_hysteresis, gov_allowed_actions,
-    output wire        seq_start_cmd, seq_stop_cmd, seq_hold_cmd, seq_resume_cmd,
+    output reg         seq_start_cmd, seq_stop_cmd, seq_hold_cmd, seq_resume_cmd,
     output reg  [7:0]  atp_test_id,
-    output wire        atp_inject_cmd, atp_check_cmd,
-    output wire        ml_capture
+    output reg         atp_inject_cmd, atp_check_cmd,
+    output reg         ml_capture
 );
 
     // ── Flat register file: 64 words × 32 bit ────────────────────────────────
@@ -78,6 +78,11 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
             gov_profile_id <= 0; gov_timeout_ms <= 32'd1000;
             gov_thresholds <= 0; gov_hysteresis <= 0; gov_allowed_actions <= 32'hFF;
             atp_test_id <= 0;
+            // FIX Bug 7: registered command strobes reset to 0
+            seq_start_cmd <= 0; seq_stop_cmd <= 0;
+            seq_hold_cmd  <= 0; seq_resume_cmd <= 0;
+            atp_inject_cmd <= 0; atp_check_cmd <= 0;
+            ml_capture <= 0;
         end else begin
             // Accept AW
             if (s_axi_awvalid && !aw_pend) begin s_axi_awready <= 1; aw_pend <= 1; aw_addr_r <= s_axi_awaddr[14:2]; end
@@ -114,8 +119,23 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
                     13'h054: if (aw_addr_r[2:0]==3'd0) atp_test_id <= s_axi_wdata[7:0]; // 0x5000
                     default:;
                 endcase
+                // FIX Bug 7: register command strobes on the commit edge
+                seq_start_cmd  <= s_axi_wdata[0] && (aw_addr_r[12:0] == 13'h1001);
+                seq_stop_cmd   <= s_axi_wdata[1] && (aw_addr_r[12:0] == 13'h1001);
+                seq_hold_cmd   <= s_axi_wdata[2] && (aw_addr_r[12:0] == 13'h1001);
+                seq_resume_cmd <= s_axi_wdata[3] && (aw_addr_r[12:0] == 13'h1001);
+                atp_inject_cmd <= (aw_addr_r[12:0] == 13'h1400);
+                atp_check_cmd  <= (aw_addr_r[12:0] == 13'h1401);
+                ml_capture     <= s_axi_wdata[4] && (aw_addr_r[12:0] == 13'h001);
                 aw_pend <= 0; w_pend <= 0; s_axi_bvalid <= 1; s_axi_bresp <= 2'b00;
-            end else if (s_axi_bvalid && s_axi_bready) s_axi_bvalid <= 0;
+            end else begin
+                // De-assert command strobes after 1 cycle
+                seq_start_cmd <= 0; seq_stop_cmd <= 0;
+                seq_hold_cmd  <= 0; seq_resume_cmd <= 0;
+                atp_inject_cmd <= 0; atp_check_cmd <= 0;
+                ml_capture <= 0;
+                if (s_axi_bvalid && s_axi_bready) s_axi_bvalid <= 0;
+            end
         end
     end
 
@@ -175,20 +195,7 @@ module AXI_SlaveInterface #(parameter BASE_ADDR = 32'h4000_0000)(
     assign s_axis_tready = m_axis_tready;
     assign m_axis_tdata  = s_axis_tdata;
     assign m_axis_tvalid = s_axis_tvalid;
-
-    // ── Command pulse outputs (single-cycle strobes from register writes) ──────
-    assign seq_start_cmd = (aw_pend && w_pend && s_axi_wdata[0] &&
-                            s_axi_awaddr[14:2] == 13'h1001);
-    assign seq_stop_cmd  = (aw_pend && w_pend && s_axi_wdata[1] &&
-                            s_axi_awaddr[14:2] == 13'h1001);
-    assign seq_hold_cmd  = (aw_pend && w_pend && s_axi_wdata[2] &&
-                            s_axi_awaddr[14:2] == 13'h1001);
-    assign seq_resume_cmd= (aw_pend && w_pend && s_axi_wdata[3] &&
-                            s_axi_awaddr[14:2] == 13'h1001);
-    assign atp_inject_cmd= (aw_pend && w_pend && s_axi_awaddr[14:2] == 13'h1400);
-    assign atp_check_cmd = (aw_pend && w_pend && s_axi_awaddr[14:2] == 13'h1401);
-    assign ml_capture    = (aw_pend && w_pend && s_axi_wdata[4] &&
-                            s_axi_awaddr[14:2] == 13'h001);
+    // Command strobes are now registered outputs (Bug 7 fix above — assigns removed)
 
 endmodule
 `default_nettype wire

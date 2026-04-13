@@ -56,6 +56,9 @@ module PrimaryDecomposer #(
     reg [COEFF_WIDTH-1:0] s1[0:3], s2[0:3], s3[0:3], s4[0:3];
     reg [MAX_VARIABLES-1:0] mono_deg;
 
+    // FIX Bug 5: integer at module scope (not inside begin: block inside always)
+    integer i;
+
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state <= ST_IDLE; done <= 0; prime_count <= 0;
@@ -92,7 +95,6 @@ module PrimaryDecomposer #(
                     // 4-way systolic F4/F5 reduction (pipelined)
                     s_axis_coeff_tready <= 0;
                     begin : systolic
-                        integer i;
                         for (i = 0; i < 4; i = i + 1) begin
                             s1[i] <= poly_store[{1'b0, iter_count[9:0]}][COEFF_WIDTH*(i+1)-1 -: COEFF_WIDTH]
                                       * {16'd0, mono_deg[i*4 +: 4]};

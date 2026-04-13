@@ -29,7 +29,9 @@ module SemanticDistanceEngine #(
     reg [31:0] dist_acc;
     reg        valid_s1, valid_s2, valid_s3;
 
-    integer i;
+    // Module-scope loop variables and accumulator (Verilog-2001: no declarations inside always)
+    integer i, k;
+    reg [31:0] acc_comb;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -59,18 +61,14 @@ module SemanticDistanceEngine #(
             end
 
             // Stage 4: sum and scale to Q16.16
-            // ANOM-012 FIX A: non-blocking <= (was blocking =)
-            // ANOM-012 FIX B: parameterised loop (was hardcoded sq[0]+...+sq[7])
-            if (valid_s3) begin
-                begin : sum_loop
-                    integer k;
-                    reg [31:0] acc;
-                    acc = 32'd0;
-                    for (k = 0; k < VECTOR_DIM; k = k + 1)
-                        acc = acc + {16'd0, sq[k]};
-                    dist_acc <= acc;  // non-blocking write to registered output
-                end
-                semantic_dist <= (dist_acc << 16) / VECTOR_DIM;  // normalise
+            // FIX: acc_comb and k moved to module scope (Verilog-2001 compliant)
+            // FIX: semantic_dist now reads acc_comb this cycle (no 1-cycle lag)
+            if (valid_s3) begin : sum_loop
+                acc_comb = 32'd0;
+                for (k = 0; k < VECTOR_DIM; k = k + 1)
+                    acc_comb = acc_comb + {16'd0, sq[k]};
+                dist_acc      <= acc_comb;
+                semantic_dist <= (acc_comb << 16) / VECTOR_DIM;  // normalise
             end
         end
     end

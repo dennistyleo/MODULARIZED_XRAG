@@ -120,16 +120,22 @@ module OntologySiliconModule #(
     end
     assign decomp_done_100 = decomp_done_s2_100 & ~decomp_done_ack_100;  // rising edge detect
 
-    // clk_300 → clk_100: prime_count 32-bit bus (latch when done_100 fires)
-    (* ASYNC_REG = "TRUE" *) reg [31:0] prime_count_s1_100, prime_count_s2_100;
+    // clk_300 → clk_100: prime_count 32-bit bus
+    // FIX Bug 8: latch in clk_300 domain when stable (at decomp_done), then
+    // read latch in clk_100 — avoids multi-bit metastability on raw bus capture.
+    reg [31:0] prime_count_latch_300;   // stable in clk_300 domain
+    always @(posedge clk_300 or negedge rst_n)
+        if (!rst_n)         prime_count_latch_300 <= 32'd0;
+        else if (decomp_done) prime_count_latch_300 <= prime_count; // stable at this point
+
+    (* ASYNC_REG = "TRUE" *) reg [31:0] prime_count_s1_100;
     reg [31:0] prime_count_100;   // stable read in clk_100 domain
     always @(posedge clk_100 or negedge rst_n) begin
         if (!rst_n) begin
-            prime_count_s1_100 <= 0; prime_count_s2_100 <= 0; prime_count_100 <= 0;
+            prime_count_s1_100 <= 0; prime_count_100 <= 0;
         end else begin
-            prime_count_s1_100 <= prime_count;     // prime_count driven by clk_300 domain
-            prime_count_s2_100 <= prime_count_s1_100;
-            if (decomp_done_100) prime_count_100 <= prime_count_s2_100;  // latch on valid
+            prime_count_s1_100 <= prime_count_latch_300;  // sample from stable latch
+            if (decomp_done_100) prime_count_100 <= prime_count_s1_100; // gate on handshake
         end
     end
 

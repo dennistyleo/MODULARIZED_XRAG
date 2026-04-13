@@ -163,7 +163,7 @@ module SequencingEngine #(
                             end else begin
                                 current_step  <= current_step + 1;
                                 timeout_count <= 0;
-                                emit_ev(EV_STEP_ENT, 32'd2, 32'd0, {88'd0, current_step+1});
+                                emit_ev(EV_STEP_ENT, 32'd2, 32'd0, {88'd0, current_step + 8'd1});
                             end
                         end
                     end
