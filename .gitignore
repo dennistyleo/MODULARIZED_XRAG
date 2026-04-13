@@ -31,3 +31,13 @@ venv/
 
 # ── Docker ─────────────────────────────────────────────────
 *.log
+*.mp4
+static/*.mp4
+fpga/testbench.vvp
+debug.py
+test_*.py
+*.mp4
+static/*.mp4
+fpga/testbench.vvp
+debug.py
+test_*.py
