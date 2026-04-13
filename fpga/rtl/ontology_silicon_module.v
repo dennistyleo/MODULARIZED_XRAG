@@ -165,10 +165,10 @@ module OntologySiliconModule #(
         .runtime_cycles(runtime_cycles), .error_code(decomp_error),
         .axiom_base_addr(axiom_base_addr), .result_base_addr(result_base_addr), .target_addr(target_addr),
         .t_max(t_max), .t_dot_max(t_dot_max), .h_t_min(h_t_min),
-        .sigma_max(sigma_max), .sigma_dot_max(sigma_dot_max), .d_m_max(d_m_max),
-        .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), .p_margin_min(p_margin_min),
-        .d_max(d_max), .d_dot_max(d_dot_max), .r_see_max(r_see_max),
-        .tau_s_max(tau_s_max), .pi_max(pi_max), .l_max(l_max), .j_max(j_max),
+        .sigma_max(sigma_max), .sigma_dot_max(sigma_dot_max), 
+        .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), 
+        .d_max(d_max),  
+        .tau_s_max(tau_s_max),  .l_max(l_max), .j_max(j_max),
         .global_hazard(global_hazard), .stability_index(stability_index), .upasl_decision(upasl_decision),
         .invariant_violations(invariant_violations),
         .gov_profile_id(gov_profile_id), .gov_timeout_ms(gov_timeout_ms), .gov_thresholds(gov_thresholds),
@@ -207,7 +207,7 @@ module OntologySiliconModule #(
         .clk(clk_100), .rst_n(rst_n), .axiom_id_in(s_axis_tdata[7:0]), .axiom_valid(s_axis_tvalid),
         .violation_count(invariant_violations), .irq_out(invariant_irq)
     );
-    UPASLDomainEngine    #(.NUM_DOMAINS(NUM_DOMAINS),.ADC_WIDTH(ADC_WIDTH)) u_upasl (
+    upasl_domain_engine    #(.NUM_DOMAINS(NUM_DOMAINS),.ADC_WIDTH(ADC_WIDTH)) u_upasl (
         .clk(clk_100), .rst_n(rst_n),
         .temp_hotspot(adc_temp_hotspot), .temp_rate(adc_temp_rate),
         .stress_mech(adc_stress_mech), .stress_rate(adc_stress_rate),
@@ -216,10 +216,10 @@ module OntologySiliconModule #(
         .loop_latency(telemetry_latency), .jitter(telemetry_jitter),
         .evidence_valid(evidence_valid_mask),
         .t_max(t_max), .t_dot_max(t_dot_max), .h_t_min(h_t_min),
-        .sigma_max(sigma_max), .sigma_dot_max(sigma_dot_max), .d_m_max(d_m_max),
-        .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), .p_margin_min(p_margin_min),
-        .d_max(d_max), .d_dot_max(d_dot_max), .r_see_max(r_see_max),
-        .tau_s_max(tau_s_max), .pi_max(pi_max), .l_max(l_max), .j_max(j_max),
+        .sigma_max(sigma_max), .sigma_dot_max(sigma_dot_max), 
+        .v_min(v_min), .i_dot_max(i_dot_max), .soc_min(soc_min), 
+        .d_max(d_max),  
+        .tau_s_max(tau_s_max),  .l_max(l_max), .j_max(j_max),
         // ANOM-001/002 FIX: flat port connections (replaces unpacked array)
         .domain_status_flat(domain_status_flat), .limit_fraction_flat(limit_fraction_flat),
         .global_hazard(global_hazard), .stability_index(stability_index), .decision(upasl_decision)

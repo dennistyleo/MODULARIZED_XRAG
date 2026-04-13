@@ -49,7 +49,7 @@ module PrimaryDecomposer #(
     reg [POLY_WIDTH-1:0] poly_store [0:1023];
 
     reg [2:0]  state;
-    reg [9:0]  poly_ptr;
+    reg [31:0] poly_ptr;
     reg [31:0] iter_count;
 
     // 4-way systolic reduction pipeline (Q16.16 fixed-point)
@@ -81,7 +81,7 @@ module PrimaryDecomposer #(
                 ST_LOAD_AXIOMS: begin
                     if (s_axis_coeff_tvalid) begin
                         // Pack incoming coefficient beat into polynomial slot
-                        poly_store[poly_ptr][COEFF_WIDTH-1:0] <= s_axis_coeff_tdata;
+                        poly_store[poly_ptr[9:0]] <= s_axis_coeff_tdata;
                         poly_ptr <= poly_ptr + 1;
                         // Also ingest groebner basis coefficients interleaved
                         if (gb_coeff_valid)
