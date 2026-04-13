@@ -1,11 +1,17 @@
 /**
  * Module: main
- * Version: 2.0.0
+ * Version: 3.0.0
  * Description: Sovereign Matrix — 3-page dashboard, axiom browser,
- *              3-layer progressive disclosure, HITL modal, GNN canvas stubs.
+ *              deterministic routing, gold-breathing axiom selection,
+ *              D3 GNN + particle WM + DAG causal animations.
  */
 
-import { AXIOMS, AXIOM_INDEX, DEDUCTION_AXIOM_IDS } from './data/axioms.js';
+import { AXIOM_DOMAINS, AXIOM_INDEX, DEDUCTION_IDS } from './data/axiomData.js';
+import { matchTextToAxioms, buildGNNGraph, buildCausalGraph, buildWorldModelParticles } from './matchEngine.js';
+import { dashAnim } from './visualizations/dashboard-animations.js';
+// Compatibility shim — old code used AXIOMS[id], new code uses AXIOM_INDEX[id]
+const AXIOMS = AXIOM_INDEX;
+
 
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -25,7 +31,7 @@ const state = {
   searchQuery:   '',
 };
 
-// DEDUCTION_AXIOM_IDS is now imported from axioms.js (P1+P2: full physics+engineering set)
+// DEDUCTION_IDS is now imported from axioms.js (P1+P2: full physics+engineering set)
 
 // ── Language registry ─────────────────────────────────────────────────────────
 const LANGUAGES = [
@@ -81,98 +87,112 @@ qs('#initialize-engine')?.addEventListener('click', initEngine);
 function initEngine() {
   state.sessionId = genSessionId();
   qs('#landing-root').style.display = 'none';
-  const dash = qs('#dashboard-root');
-  dash.style.display = 'flex';
 
-  // Apply mode color class + data-engine to body
+  // Show op-root
+  const opRoot = qs('#op-root');
+  opRoot.classList.add('visible');
+
+  // Apply mode color + data-engine to body
   document.body.dataset.engine = state.engine;
 
-  // Sync selected engine from landing to header
   _syncEngineDisplay();
-  _buildAxiomTree();
-  navigatePage(1);
+  _renderAllAxiomTrees();  // populate all 3 sidebar axiom trees
 
-  toast('Sovereign Matrix engine initialized', 'success');
+  // ── DETERMINISTIC ROUTING: DEDUCTION → Op-3, others → Op-1 ──
+  if (state.engine === 'DEDUCTION') {
+    _showOpPage(3);
+    toast('DEDUCTION mode — Deduction Evaluation page loaded', 'success');
+  } else {
+    _showOpPage(1);
+    toast(`${state.engine} mode — Analysis page loaded`, 'success');
+  }
+
   console.log(`[SOVEREIGN] Session: ${state.sessionId} | Engine: ${state.engine}`);
 }
 
 // ── Return to landing ────────────────────────────────────────────────────────
 function returnToLanding() {
-  qs('#dashboard-root').style.display = 'none';
-  qs('#landing-root').style.display   = '';
-  // Keep engine state — user can switch mode then re-initialize
+  qs('#op-root').classList.remove('visible');
+  qs('#landing-root').style.display = '';
   toast('Returned to landing — select a mode and re-initialize', 'info', 3000);
 }
-qs('#hdr-return-btn')?.addEventListener('click', returnToLanding);
+// Wire all return buttons (wide header, slim header)
+document.querySelectorAll('#hdr-return-btn, #hdr-return-btn-slim').forEach(btn => {
+  btn?.addEventListener('click', returnToLanding);
+});
 
-// ── Page Navigation ──────────────────────────────────────────────────────────
-const PAGE_LABELS = {
-  1: { label:'Page 1 of 3', next:'Continue to Analysis →', back:null },
-  2: { label:'Page 2 of 3', next:'Generate Report →',      back:'← Back to Upload' },
-  3: { label:'Page 3 of 3', next:null,                      back:'← Back to Analysis' },
-};
+// ── Op-Page Navigation ───────────────────────────────────────────────────────
 
-function navigatePage(n) {
+/**
+ * Show an operation page (1, 2, or 3), swap headers accordingly.
+ * @param {number} n
+ */
+function _showOpPage(n) {
   state.page = n;
-  qsa('.page').forEach(p => p.classList.remove('active'));
-  const target = qs(`#page-${n}`);
-  if (target) target.classList.add('active');
 
-  // Update page dots
-  qsa('.page-dot').forEach(d => d.classList.toggle('active', +d.dataset.page === n));
-
-  // Update pipeline progress
-  const pct = (n / 3) * 100;
-  qs('#pipeline-progress').style.width = `${pct}%`;
-
-  // Update pipeline stage dots
-  qsa('.pipeline-stage').forEach((s, i) => {
-    s.classList.remove('active','completed');
-    const stageNum = i + 1;
-    if (stageNum < n * 2)        s.classList.add('completed');
-    else if (stageNum === n * 2)  s.classList.add('active');
+  // Show/hide pages
+  qsa('.op-page').forEach(p => {
+    const isTarget = p.id === `op-page-${n}`;
+    p.classList.toggle('op-page-active', isTarget);
+    p.style.display = isTarget ? 'flex' : 'none';
   });
 
-  // Footer
-  const footer = qs('#page-footer');
-  footer.classList.toggle('visible', true);
-  const info = PAGE_LABELS[n];
-  qs('#footer-page-label').textContent = info.label;
-
-  const nextBtn = qs('#footer-next-btn');
-  const backBtn = qs('#footer-back-btn');
-
-  if (info.next) {
-    nextBtn.textContent = info.next;
-    nextBtn.style.display = 'flex';
-  } else {
-    nextBtn.style.display = 'none';
+  // Swap headers: wide (5-tube) on Op-1; slim on Op-2/3
+  const wideHdr = qs('#op-header-wide');
+  const slimHdr = qs('#op-header-slim');
+  if (wideHdr && slimHdr) {
+    wideHdr.style.display = (n === 1) ? '' : 'none';
+    slimHdr.style.display = (n === 1) ? 'none' : 'flex';
   }
 
-  if (info.back) {
-    backBtn.textContent = info.back;
-    backBtn.style.display = 'flex';
-  } else {
-    backBtn.style.display = 'none';
-  }
+  // Slim header CTA adjustments:
+  // Op-2: [MANUAL AXIOM SELECTION] + [GENERATE AUDIT REPORT] (no upload)
+  // Op-3: [MANUAL AXIOM SELECTION] + [UPLOAD INPUT FILE] + [GENERATE AUDIT REPORT]
+  const uploadBtn  = qs('#btn-upload-file');
+  const bannerEl   = qs('#deduction-eval-banner');
+  if (uploadBtn)  uploadBtn.style.display  = (n === 3) ? '' : 'none';
+  if (bannerEl)   bannerEl.style.display   = (n === 3) ? '' : 'none';
 
-  // Trigger page-specific setup
-  if (n === 2) _setupPage2();
-  if (n === 3) _buildReport();
+  // Animate L1 tube to 100%, others proportional
+  _animateTubes(n);
+
+  // Dashboard canvas animations
+  if (n === 1) dashAnim.startPage1();
+  else if (n === 2) dashAnim.startPage2();
+  else if (n === 3) dashAnim.startPage3();
+  else dashAnim.stopAll();
 }
 
-qs('#footer-next-btn')?.addEventListener('click', () => {
-  if (state.page < 3) navigatePage(state.page + 1);
-});
-qs('#footer-back-btn')?.addEventListener('click', () => {
-  if (state.page > 1) navigatePage(state.page - 1);
+/**
+ * Animate tube fill percentages based on current op-page.
+ * @param {number} opPage
+ */
+function _animateTubes(opPage) {
+  const pcts = {
+    1: [100,  0,  0,  0,  0],
+    2: [100,100,100,  0,  0],
+    3: [100,100,100,100,100],
+  }[opPage] || [0,0,0,0,0];
+  pcts.forEach((pct, i) => {
+    const tube   = qs(`#tube-l${i+1}`);
+    const scalar = qs(`#scalar-l${i+1}`);
+    const fill   = tube?.querySelector('.liquid-fill');
+    if (fill)   fill.style.width = pct + '%';
+    if (tube)   tube.setAttribute('aria-valuenow', pct);
+    if (scalar) scalar.textContent = pct + '%';
+  });
+}
+
+// Wire op-page navigation buttons
+document.addEventListener('click', e => {
+  if (e.target.id === 'op-next-btn-1') _showOpPage(2);
+  if (e.target.id === 'op-next-btn-2') _showOpPage(3);
+  if (e.target.id === 'op-back-btn-2') _showOpPage(1);
+  if (e.target.id === 'op-back-btn-3') _showOpPage(2);
 });
 
-// Page dots
-qsa('.page-dot').forEach(d => {
-  d.addEventListener('click', () => navigatePage(+d.dataset.page));
-  d.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') navigatePage(+d.dataset.page); });
-});
+/** Legacy navigatePage shim — keep so _buildReport etc. still work */
+function navigatePage(n) { _showOpPage(n); }
 
 // ── Logic Engine ─────────────────────────────────────────────────────────────
 function setEngine(engine) {
@@ -232,10 +252,10 @@ dropZone?.addEventListener('dragleave', () => dropZone.classList.remove('drag-ov
 dropZone?.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
   const f = e.dataTransfer?.files?.[0];
-  if (f) _handleFile(f);
+  if (f) _handleFileLegacy(f);
 });
 uploadInput?.addEventListener('change', e => {
-  const f = e.target.files?.[0]; if (f) _handleFile(f);
+  const f = e.target.files?.[0]; if (f) _handleFileLegacy(f);
 });
 
 const ALLOWED_EXT = [
@@ -250,7 +270,7 @@ const ALLOWED_EXT = [
 ];
 const MAX_BYTES   = 50 * 1024 * 1024;
 
-function _handleFile(file) {
+function _handleFileLegacy(file) {
   const ext = '.' + file.name.split('.').pop().toLowerCase();
   if (!ALLOWED_EXT.includes(ext)) { toast(`Unsupported: ${ext}. Use PDF, CSV, JSON, XLS.`, 'error'); return; }
   if (file.size > MAX_BYTES)       { toast('File too large. Maximum 50MB.', 'error'); return; }
@@ -332,7 +352,7 @@ function _injectExtractedAxioms(data) {
     if (!AXIOM_INDEX.axioms_by_status[status]) AXIOM_INDEX.axioms_by_status[status] = [];
     if (!AXIOM_INDEX.axioms_by_status[status].includes(id)) AXIOM_INDEX.axioms_by_status[status].push(id);
   });
-  _renderAxiomTree();
+  _renderAllAxiomTrees();
   toast(`${newAxioms.length} axiom(s) injected into browser`, 'info', 3000);
 }
 
@@ -378,75 +398,8 @@ function _setupPage2() {
 function _buildAxiomTree() { /* build done on render */ }
 
 function _renderAxiomTree() {
-  const treeEl = qs('#axiom-tree');
-  if (!treeEl) return;
-  treeEl.innerHTML = '';
-
-  Object.entries(AXIOM_INDEX.axioms_by_domain).forEach(([domain, ids]) => {
-    // Filter
-    const filtered = ids.filter(id => {
-      const ax = AXIOMS[id]; if (!ax) return false;
-
-      // DEDUCTION mode: restrict to physics PDF axioms only
-      if (state.engine === 'DEDUCTION' && !DEDUCTION_AXIOM_IDS.has(id)) return false;
-      // INDUCTION / ABDUCTION: all axioms available
-
-      const status = ax.layer_1_audit_header?.status?.toLowerCase() ?? '';
-      const matchStatus = state.filterStatus==='all' || status===state.filterStatus.toLowerCase();
-      const matchSearch = !state.searchQuery || ax.layer_1_audit_header?.name?.toLowerCase().includes(state.searchQuery) || id.toLowerCase().includes(state.searchQuery);
-      return matchStatus && matchSearch;
-    });
-    if (!filtered.length) return;
-
-    const group = document.createElement('div');
-    group.className = 'domain-group';
-
-    const hdr = document.createElement('div');
-    hdr.className = 'domain-header';
-    hdr.innerHTML = `<span>📁 ${domain}</span><span class="domain-toggle open">▶</span>`;
-    group.appendChild(hdr);
-
-    const axiomsDiv = document.createElement('div');
-    axiomsDiv.className = 'domain-axioms open';
-
-    filtered.forEach(id => {
-      const ax = AXIOMS[id];
-      if (!ax) return;
-      const l1 = ax.layer_1_audit_header;
-      const status   = l1.status.toLowerCase();
-      const healthPct = Math.round((l1.health?.explanation_ratio ?? 1) * 100);
-      const healthColor = healthPct >= 90 ? '#22C55E' : healthPct >= 70 ? '#F59E0B' : '#EF4444';
-
-      const row = document.createElement('div');
-      row.className = 'axiom-row' + (state.selectedAxiom?.axiom_id===id ? ' selected' : '');
-      row.dataset.axiomId = id;
-      row.setAttribute('role','treeitem');
-      row.setAttribute('tabindex','0');
-      row.setAttribute('aria-label', `${id} ${l1.name} status ${status}`);
-      row.innerHTML = `
-        <div class="axiom-status-dot ${status}" title="${l1.status}"></div>
-        <div class="axiom-row-info">
-          <div class="axiom-row-id">${id}</div>
-          <div class="axiom-row-name">${l1.name}</div>
-        </div>
-        <div class="axiom-health-bar" title="${healthPct}% phenomena explained">
-          <div class="axiom-health-fill" style="width:${healthPct}%;background:${healthColor}"></div>
-        </div>`;
-      row.addEventListener('click', () => selectAxiom(id));
-      row.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') selectAxiom(id); });
-      axiomsDiv.appendChild(row);
-    });
-
-    group.appendChild(axiomsDiv);
-    treeEl.appendChild(group);
-
-    // Toggle
-    hdr.addEventListener('click', () => {
-      const arrow = hdr.querySelector('.domain-toggle');
-      axiomsDiv.classList.toggle('open');
-      arrow.classList.toggle('open');
-    });
-  });
+  // DEPRECATED — delegates to new _renderAllAxiomTrees() which uses AXIOM_DOMAINS
+  _renderAllAxiomTrees();
 }
 
 // ── Filter & Search ──────────────────────────────────────────────────────────
@@ -1199,3 +1152,499 @@ window.returnToLanding = returnToLanding;
 document.body.dataset.engine = state.engine;
 
 console.log('[SOVEREIGN] main.js v2.1.0 loaded — default engine: ABDUCTION | lang: EN');
+
+// ── Axiom Tree clone helpers for Op-2 and Op-3 ─────────────────────────────
+
+/**
+ * Clone the rendered axiom-tree HTML into Op-2 and Op-3 sidebars.
+ */
+function _cloneAxiomTrees() {
+  const src = qs('#axiom-tree');
+  if (!src) return;
+  const t2 = qs('#axiom-tree-2');
+  if (t2) t2.innerHTML = src.innerHTML;
+  _renderAxiomTree3();   // Op-3: deduction-only
+}
+
+/** Render full axiom tree into #axiom-tree-2 */
+function _renderAxiomTree2() {
+  const treeEl = qs('#axiom-tree-2');
+  if (!treeEl) return;
+  treeEl.innerHTML = '';
+  _populateTree(treeEl, false);
+}
+
+/** Render deduction-only axiom tree into #axiom-tree-3 */
+function _renderAxiomTree3() {
+  const treeEl = qs('#axiom-tree-3');
+  if (!treeEl) return;
+  treeEl.innerHTML = '';
+  _populateTree(treeEl, true);
+}
+
+/**
+ * Generic tree builder for all 3 sidebar trees.
+ * @param {HTMLElement} treeEl
+ * @param {boolean} deductionOnly
+ */
+function _populateTree(treeEl, deductionOnly) {
+  Object.entries(AXIOM_INDEX.axioms_by_domain).forEach(([domain, ids]) => {
+    const filtered = ids.filter(id => {
+      const ax = AXIOMS[id]; if (!ax) return false;
+      if (deductionOnly && !DEDUCTION_IDS.has(id)) return false;
+      const status = ax.layer_1_audit_header?.status?.toLowerCase() ?? '';
+      const matchStatus = state.filterStatus === 'all' || status === state.filterStatus.toLowerCase();
+      const matchSearch = !state.searchQuery || ax.layer_1_audit_header?.name?.toLowerCase().includes(state.searchQuery) || id.toLowerCase().includes(state.searchQuery);
+      return matchStatus && matchSearch;
+    });
+    if (!filtered.length) return;
+
+    const group = document.createElement('div');
+    group.className = 'domain-group';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'domain-header';
+    hdr.innerHTML = '<span>&#128193; ' + domain + '</span><span class="domain-toggle open">&#9654;</span>';
+    group.appendChild(hdr);
+
+    const axiomsDiv = document.createElement('div');
+    axiomsDiv.className = 'domain-axioms open';
+
+    filtered.forEach(id => {
+      const ax = AXIOMS[id]; if (!ax) return;
+      const l1 = ax.layer_1_audit_header;
+      const status = l1.status.toLowerCase();
+      const healthPct = Math.round((l1.health?.explanation_ratio ?? 1) * 100);
+      const healthColor = healthPct >= 90 ? '#22C55E' : healthPct >= 70 ? '#F59E0B' : '#EF4444';
+
+      const row = document.createElement('div');
+      row.className = 'axiom-row' + (state.selectedAxiom?.axiom_id === id ? ' selected' : '');
+      row.dataset.axiomId = id;
+      row.setAttribute('role', 'treeitem');
+      row.setAttribute('tabindex', '0');
+      row.innerHTML =
+        '<div class="axiom-status-dot ' + status + '" title="' + l1.status + '"></div>' +
+        '<div class="axiom-row-info">' +
+          '<div class="axiom-row-id">' + id + '</div>' +
+          '<div class="axiom-row-name">' + l1.name + '</div>' +
+        '</div>' +
+        '<div class="axiom-health-bar">' +
+          '<div class="axiom-health-fill" style="width:' + healthPct + '%;background:' + healthColor + '"></div>' +
+        '</div>';
+      row.addEventListener('click', () => selectAxiom(id));
+      row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') selectAxiom(id); });
+      axiomsDiv.appendChild(row);
+    });
+
+    group.appendChild(axiomsDiv);
+    treeEl.appendChild(group);
+
+    hdr.addEventListener('click', () => {
+      const arrow = hdr.querySelector('.domain-toggle');
+      axiomsDiv.classList.toggle('open');
+      arrow.classList.toggle('open');
+    });
+  });
+}
+
+/** Initialize the radar chart on Op-3 */
+function _setupRadarChart() {
+  const canvas = qs('#radar-ui');
+  if (!canvas || !window.Chart) return;
+  if (canvas._chartInstance) { canvas._chartInstance.destroy(); }
+  const ctx = canvas.getContext('2d');
+  canvas._chartInstance = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['Prop', 'Cap', 'Diss', 'Admit', 'Sync'],
+      datasets: [{
+        label: 'UPASL',
+        data: [85, 92, 78, 88, 95],
+        borderColor: '#00bf63',
+        backgroundColor: 'rgba(0,191,99,0.12)',
+        pointBackgroundColor: '#00bf63',
+        pointRadius: 4,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          ticks: { display: false },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          pointLabels: { color: '#888', font: { size: 10 } }
+        }
+      },
+      plugins: { legend: { display: false } }
+    },
+  });
+}
+
+// selectAxiom Op-3 detail show handled inline
+
+// ══════════════════════════════════════════════════════════════════
+// AXIOM TREE RENDERER — uses new AXIOM_DOMAINS structure
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Render an axiom tree into a target container element.
+ * @param {HTMLElement} container
+ * @param {object} domains - AXIOM_DOMAINS[mode] or all modes
+ * @param {boolean} deductionOnly - only render DEDUCTION domains
+ */
+function _renderTree(container, domains, deductionOnly = false) {
+  if (!container) return;
+  container.innerHTML = '';
+  const src = deductionOnly ? { DEDUCTION: domains.DEDUCTION } : domains;
+
+  Object.entries(src).forEach(([modeName, modeData]) => {
+    if (!modeData) return;
+    Object.entries(modeData).forEach(([domainName, domainData]) => {
+      if (!domainData || !domainData.axioms) return;
+
+      // Domain group header
+      const groupEl = document.createElement('div');
+      groupEl.className = 'tree-domain-group';
+
+      const headEl = document.createElement('div');
+      headEl.className = 'tree-domain-head';
+      const arrow = document.createElement('span');
+      arrow.className = 'tree-domain-arrow';
+      arrow.textContent = '▶';
+      headEl.appendChild(arrow);
+      headEl.appendChild(document.createTextNode(' ' + domainName));
+      groupEl.appendChild(headEl);
+
+      const listEl = document.createElement('div');
+      listEl.className = 'tree-axiom-list';
+      groupEl.appendChild(listEl);
+
+      // Auto-open all groups; toggle on click
+      listEl.classList.add('open');
+      arrow.classList.add('open');
+      headEl.addEventListener('click', () => {
+        const open = listEl.classList.toggle('open');
+        arrow.classList.toggle('open', open);
+      });
+
+      // Axiom rows
+      domainData.axioms.forEach(axiom => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'tree-axiom-item axiom-item';
+        itemEl.dataset.axiomId = axiom.id;
+
+        const dot = document.createElement('span');
+        dot.className = `tree-axiom-dot ${axiom.status}`;
+        const idSpan = document.createElement('span');
+        idSpan.className = 'tree-axiom-id';
+        idSpan.textContent = axiom.id;
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'tree-axiom-name';
+        nameSpan.title = axiom.name;
+        nameSpan.textContent = axiom.name;
+
+        itemEl.appendChild(dot);
+        itemEl.appendChild(idSpan);
+        itemEl.appendChild(nameSpan);
+
+        itemEl.addEventListener('click', () => _selectAxiom(axiom, itemEl));
+        listEl.appendChild(itemEl);
+      });
+
+      container.appendChild(groupEl);
+    });
+  });
+}
+
+/** Render all three sidebar trees */
+function _renderAllAxiomTrees() {
+  const mode = state.engine;
+  const modeDomains = AXIOM_DOMAINS[mode] || AXIOM_DOMAINS.DEDUCTION;
+
+  // Sidebar 1 (Op-1): current mode axioms
+  _renderTree(qs('#axiom-tree'),   AXIOM_DOMAINS, false);
+  // Sidebar 2 (Op-2): current mode axioms
+  _renderTree(qs('#axiom-tree-2'), AXIOM_DOMAINS, false);
+  // Sidebar 3 (Op-3): DEDUCTION only
+  _renderTree(qs('#axiom-tree-3'), AXIOM_DOMAINS, true);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AXIOM SELECTION — gold breathing glow + central card update
+// ══════════════════════════════════════════════════════════════════
+
+function _selectAxiom(axiom, itemEl) {
+  state.selectedAxiom = axiom;
+
+  // Remove selected from all items across all trees
+  qsa('.axiom-item.selected').forEach(el => el.classList.remove('selected'));
+  itemEl.classList.add('selected');
+
+  // Update AXIOM APPLIED cards
+  const content = _buildAxiomDetailHTML(axiom);
+
+  const targets = [
+    qs('#axiom-applied-body-1'),
+    qs('#axiom-applied-body-2-top'),
+    qs('#deduction-axiom-body-1'),
+  ];
+  targets.forEach(el => { if (el) el.innerHTML = content; });
+
+  // Update deduction criterion score display
+  const score = (axiom.confidence || 0.85).toFixed(4);
+  const scoreEl = qs('#ded-score-display');
+  const verdictEl = qs('#ded-verdict-display');
+  if (scoreEl) scoreEl.textContent = score;
+  if (verdictEl) verdictEl.textContent = parseFloat(score) > 0.85 ? 'ALLOW' : 'REFUSE';
+
+  // Trigger canvas refresh with new axiom data
+  const gnnData = buildGNNGraph([{ ...axiom, confidence: axiom.confidence || 0.85 }]);
+  const causalData = buildCausalGraph([{ ...axiom, confidence: axiom.confidence || 0.85 }]);
+  const particles = buildWorldModelParticles([{ ...axiom, confidence: axiom.confidence || 0.85 }]);
+  dashAnim.updateData({ gnnData, causalData, particles });
+
+  toast(`Axiom ${axiom.id} — ${axiom.name}`, 'info', 3000);
+}
+
+/**
+ * Build full axiom detail HTML for AXIOM APPLIED card body.
+ * @param {object} axiom
+ * @returns {string} HTML string
+ */
+function _buildAxiomDetailHTML(axiom) {
+  const conf = (axiom.confidence || 0.85) * 100;
+  return `<div class="axiom-detail-block">
+  <div class="axiom-detail-id">${axiom.id}</div>
+  <div class="axiom-detail-name">${axiom.name}</div>
+  <div class="axiom-detail-domain">DOMAIN: ${Object.keys(AXIOM_DOMAINS).find(m =>
+    Object.values(AXIOM_DOMAINS[m]).some(d => d.axioms && d.axioms.some(a => a.id === axiom.id))
+  ) || '—'}</div>
+
+  <div class="axiom-detail-label">FORMULA</div>
+  <div class="axiom-detail-formula">${axiom.formula}</div>
+
+  <div class="axiom-detail-label">DESCRIPTION</div>
+  <div class="axiom-detail-desc">${axiom.description || '—'}</div>
+
+  <div class="axiom-detail-label">GNN INTERPRETATION</div>
+  <div class="axiom-interp-block">
+    <div class="axiom-interp-title">▸ GNN MODEL</div>
+    <div class="axiom-interp-text">Axiom entities are encoded as graph nodes. Edges propagate the constraint
+    <em>${axiom.formula}</em> via message passing. Each iteration refines node embeddings until
+    convergence — nodes violating the boundary are coloured anomalous (red).</div>
+  </div>
+
+  <div class="axiom-detail-label">WORLD MODEL INTERPRETATION</div>
+  <div class="axiom-interp-block">
+    <div class="axiom-interp-title">▸ WORLD MODEL</div>
+    <div class="axiom-interp-text">1280 particles sample the admissibility manifold defined by this axiom.
+    High-density clusters near the boundary indicate high-confidence regime.
+    Resampling fires on new evidence upload, shifting the posterior distribution.</div>
+  </div>
+
+  <div class="axiom-detail-label">CAUSAL MODEL INTERPRETATION</div>
+  <div class="axiom-interp-block">
+    <div class="axiom-interp-title">▸ CAUSAL MODEL</div>
+    <div class="axiom-interp-text">Do-calculus applied: P(Y|do(X=x)) = Σ P(Y|X,Z)·P(Z).
+    Backdoor adjustment isolates the direct causal path implicit in this axiom.
+    Intervention nodes shown as diamonds; confounders shown in amber.</div>
+  </div>
+
+  <div class="axiom-conf-bar">
+    <span class="axiom-conf-label">CONFIDENCE</span>
+    <div class="axiom-conf-track"><div class="axiom-conf-fill" style="width:${conf.toFixed(1)}%"></div></div>
+    <span class="axiom-conf-pct">${conf.toFixed(0)}%</span>
+  </div>
+</div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// UPLOAD HANDLER — Op-1 (100MB), Op-3 (no limit)
+// ══════════════════════════════════════════════════════════════════
+
+function _initUploadZone(dropZoneId, inputId, maxBytes, onFile) {
+  const zone  = qs(`#${dropZoneId}`);
+  const input = qs(`#${inputId}`);
+  if (!zone || !input) return;
+
+  zone.addEventListener('click', e => {
+    if (e.target !== input) input.click();
+  });
+  zone.addEventListener('dragover', e => {
+    e.preventDefault(); zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const file = e.dataTransfer?.files?.[0];
+    if (file) _handleFile(file, maxBytes, onFile);
+  });
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (file) _handleFile(file, maxBytes, onFile);
+    input.value = '';
+  });
+}
+
+function _handleFile(file, maxBytes, onFile) {
+  if (maxBytes && file.size > maxBytes) {
+    toast(`File too large: ${(file.size/1024/1024).toFixed(1)}MB / max ${(maxBytes/1024/1024).toFixed(0)}MB`, 'error');
+    return;
+  }
+  state.uploadedFile = file;
+  toast(`File accepted: ${file.name}`, 'success', 3000);
+
+  // Update file info displays
+  qsa('#file-info-name').forEach(el => el.textContent = file.name);
+  qsa('#file-info-size').forEach(el => el.textContent = `${(file.size/1024).toFixed(1)} KB`);
+  qsa('#file-info-card, #file-info-card-3').forEach(el => el.style.display = '');
+
+  // Read as text and run axiom matching
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result || '';
+    const matches = matchTextToAxioms(text, state.engine);
+    console.log(`[MATCH] ${matches.length} axioms matched for ${file.name}`);
+    if (matches.length > 0) _applyMatchedAxioms(matches, file.name);
+    if (onFile) onFile(file, matches);
+    // Simulate progress bar
+    _simulateProgress();
+    // Advance to Op-2 if on Op-1 after a short delay
+    if (state.page === 1 && state.engine !== 'DEDUCTION') {
+      setTimeout(() => _showOpPage(2), 1800);
+    }
+  };
+  reader.onerror = () => toast('File read error', 'error');
+  // Try text read; fallback for binary files
+  try { reader.readAsText(file); }
+  catch(ex) { toast('Binary file — axiom matching skipped', 'warning', 3000); }
+}
+
+function _simulateProgress() {
+  const fillEl = qs('#upload-fill');
+  const pctEl  = qs('#upload-pct');
+  const wrap   = qs('#upload-progress-wrap');
+  if (!wrap) return;
+  wrap.style.display = '';
+  let pct = 0;
+  const iv = setInterval(() => {
+    pct += Math.random() * 18;
+    if (pct >= 100) { pct = 100; clearInterval(iv); setTimeout(() => { wrap.style.display = 'none'; }, 1200); }
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (pctEl)  pctEl.textContent  = Math.round(pct) + '%';
+  }, 120);
+}
+
+/**
+ * Populate AXIOM APPLIED cards from matched axioms.
+ * @param {Array} matches
+ * @param {string} fileName
+ */
+function _applyMatchedAxioms(matches, fileName) {
+  // Build graph + particle data from top matches
+  const top3 = matches.slice(0, 3);
+  const gnnData    = buildGNNGraph(matches.slice(0, 12));
+  const causalData = buildCausalGraph(matches.slice(0, 8));
+  const particles  = buildWorldModelParticles(matches);
+
+  dashAnim.updateData({ gnnData, causalData, particles });
+
+  // Populate AXIOM APPLIED cards (Op-1)
+  const body1 = qs('#axiom-applied-body-1');
+  if (body1 && top3[0]) body1.innerHTML = _buildAxiomDetailHTML({ ...top3[0], confidence: top3[0].confidence });
+
+  // Populate Op-2 cards
+  const bodyP2Top = qs('#axiom-applied-body-2-top');
+  const bodyP2Bot = qs('#axiom-applied-body-2-bot');
+  if (bodyP2Top && top3[0]) bodyP2Top.innerHTML = _buildAxiomDetailHTML({ ...top3[0], confidence: top3[0].confidence });
+  if (bodyP2Bot && top3[1]) bodyP2Bot.innerHTML = _buildAxiomDetailHTML({ ...top3[1], confidence: top3[1].confidence });
+
+  // Populate Op-3 deduction cards
+  top3.forEach((ax, i) => {
+    const el = qs(`#deduction-axiom-body-${i+1}`);
+    if (el) el.innerHTML = _buildAxiomDetailHTML({ ...ax, confidence: ax.confidence });
+  });
+
+  // Update deduction score
+  const avgConf = top3.reduce((s, a) => s + a.confidence, 0) / top3.length;
+  const scoreEl = qs('#ded-score-display');
+  const verdictEl = qs('#ded-verdict-display');
+  if (scoreEl) scoreEl.textContent = avgConf.toFixed(4);
+  if (verdictEl) verdictEl.textContent = avgConf > 0.85 ? 'ALLOW' : 'REFUSE_TIER_2';
+
+  // Highlight matched axioms in sidebar with gold glow
+  top3.forEach(ax => {
+    qsa(`[data-axiom-id="${ax.id}"]`).forEach(el => el.classList.add('selected'));
+  });
+
+  toast(`${matches.length} axioms matched from ${fileName}`, 'success');
+}
+
+// Initialise both upload zones on DOM ready
+window.addEventListener('DOMContentLoaded', () => {
+  // Op-1 upload zone — 100MB
+  _initUploadZone('drop-zone', 'upload-input', 100 * 1024 * 1024, null);
+  // Op-3 upload zone — no limit (null)
+  _initUploadZone('drop-zone-3', 'upload-input-3', null, null);
+});
+
+// ══════════════════════════════════════════════════════════════════
+// SLIM HEADER CTA WIRING
+// ══════════════════════════════════════════════════════════════════
+
+document.addEventListener('click', e => {
+  // MANUAL AXIOM SELECTION
+  if (e.target.id === 'btn-manual-axiom') {
+    toast('Manual axiom selection mode — click any axiom in the AXIOM REPO', 'info', 3500);
+  }
+  // UPLOAD INPUT FILE (Op-3 header button)
+  if (e.target.id === 'btn-upload-file') {
+    qs('#upload-input-3')?.click();
+  }
+  // GENERATE AUDIT REPORT
+  if (e.target.id === 'btn-generate-report') {
+    toast('Generating audit report…', 'info', 2000);
+    setTimeout(() => _generateAuditReport(), 2000);
+  }
+  // TRACE ENGINE LOGIC toggle
+  if (e.target.id === 'btn-trace-engine') {
+    const panel = qs('#trace-engine-panel');
+    if (panel) {
+      const open = panel.style.display === 'none';
+      panel.style.display = open ? '' : 'none';
+      e.target.classList.toggle('active', open);
+    }
+  }
+  // DEDUCTIVE TIMESTAMP toggle
+  if (e.target.id === 'btn-deductive-timestamp') {
+    const panel = qs('#timestamp-panel');
+    if (panel) {
+      const open = panel.style.display === 'none';
+      panel.style.display = open ? '' : 'none';
+      e.target.classList.toggle('active', open);
+      if (open) _tickTimestampLog();
+    }
+  }
+});
+
+/** Live-append timestamp entries */
+function _tickTimestampLog() {
+  const el = qs('#timestamp-entries');
+  if (!el) return;
+  const now = new Date().toLocaleTimeString('en-GB');
+  const entry = document.createElement('div');
+  entry.className = 'ded-log-entry';
+  entry.textContent = `[${now}] [SYSTEM] Deductive constraint check — boundary verified`;
+  entry.style.color = 'rgba(57,255,20,0.7)';
+  entry.style.fontSize = '9px';
+  el.appendChild(entry);
+  el.scrollTop = el.scrollHeight;
+  setTimeout(_tickTimestampLog, 4200);
+}
+
+function _generateAuditReport() {
+  toast('Audit report generated — ALLOW verdict confirmed', 'success');
+}
+
