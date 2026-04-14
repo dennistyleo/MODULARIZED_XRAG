@@ -1,0 +1,185 @@
+{
+  "spec_version": "3.0",
+  "name": "Axiom Generator Complete Placement Specification",
+  "description": "UNIFIED spec — all placement, shape, color, breathing space, and responsive rules in ONE file",
+  
+  "global_rules": {
+    "no_fixed_px_margins": "USE clamp() or % for margins — fixed 30px FAILS on mobile",
+    "no_content_touches_edge": "Always maintain breathing space on all sides",
+    "border_radius": "22px with 45° slope — NOT 8px, NOT 12px",
+    "reference_resolution": "1366x768 — but must scale to ALL resolutions"
+  },
+  
+  "colors": {
+    "primary_green": "#00bf63",
+    "gold": "#c9a349",
+    "gradient_start": "#ffde59",
+    "gradient_end": "#ff914d",
+    "sidebar_gradient_start": "#ff3131",
+    "sidebar_gradient_end": "#ff914d",
+    "background": "#000000",
+    "panel_bg": "#1a1a1a",
+    "border_color": "#333333",
+    "text_light": "#ffffff",
+    "text_dark": "#000000",
+    "lime_button": "#9eff1f"
+  },
+  
+  "border_radius_slope": {
+    "value": "22px",
+    "slope": "45deg",
+    "rule": "ALL main containers use 22px border-radius with 45° natural slope",
+    "NOT_8px": "DO NOT use 8px, 12px, or 16px — ONLY 22px",
+    "css": "border-radius: 22px; overflow: hidden;"
+  },
+  
+  "breathing_spaces": {
+    "description": "These areas must remain EMPTY — no content, no text, no icons",
+    
+    "left_right_margins": {
+      "rule": "NEVER use fixed 30px — use responsive clamp",
+      "desktop": "clamp(20px, 5vw, 60px)",
+      "mobile": "clamp(10px, 3vw, 20px)",
+      "css": "padding-left: clamp(10px, 5vw, 60px); padding-right: clamp(10px, 5vw, 60px);"
+    },
+    
+    "between_tubes": {
+      "desktop": "gap: 2%",
+      "mobile": "flex-direction: column; gap: 8px",
+      "css_desktop": ".tubes-grid { gap: 2%; }",
+      "css_mobile": "@media (max-width: 768px) { .tubes-grid { display: flex; flex-direction: column; gap: 8px; } }"
+    },
+    
+    "zone_5": {
+      "location": "Below deduction zone, above footer",
+      "height_desktop": "40px",
+      "height_mobile": "clamp(15px, 4vh, 40px)",
+      "content": "EMPTY — no text, no images, no buttons",
+      "css": ".zone-5 { height: clamp(15px, 4vh, 40px); }"
+    },
+    
+    "zone_6": {
+      "location": "Between canvas and audit sidebar",
+      "width_desktop": "20px",
+      "width_mobile": "clamp(10px, 2vw, 20px)",
+      "content": "EMPTY — spacer only",
+      "css": ".zone-6 { width: clamp(10px, 2vw, 20px); }"
+    },
+    
+    "zone_7": {
+      "location": "Bottom of left sidebar",
+      "height": "30px",
+      "content": "EMPTY — no axiom items in this area",
+      "css": ".sidebar-left { padding-bottom: 30px; }"
+    },
+    
+    "zone_8": {
+      "location": "Top of right sidebar, above score",
+      "height": "20px",
+      "content": "EMPTY",
+      "css": ".audit-side { padding-top: 20px; }"
+    },
+    
+    "tabs_to_canvas": {
+      "height": "15px",
+      "content": "EMPTY",
+      "css": ".tabs { margin-bottom: 15px; }"
+    },
+    
+    "canvas_to_deduction": {
+      "height": "15px",
+      "content": "EMPTY",
+      "css": ".canvas { margin-bottom: 15px; }"
+    },
+    
+    "workspace_grid": {
+      "desktop": "350px 1fr 340px",
+      "tablet": "280px 1fr 280px",
+      "mobile": "flex-direction: column",
+      "css_desktop": ".workspace { display: grid; grid-template-columns: 350px 1fr 340px; }",
+      "css_mobile": "@media (max-width: 768px) { .workspace { display: flex; flex-direction: column; } .workspace > * { width: 100%; } }"
+    }
+  },
+  
+  "headers": {
+    "OP01_HEADER": {
+      "page": "Landing Page / Default Dashboard",
+      "shape": "rectangular with gradient",
+      "height": "320px",
+      "background": "linear-gradient(90deg, #ff3131, #ff914d)",
+      "border_bottom": "2px solid #c1ff72",
+      "border_radius": "0 0 22px 22px",
+      "children": {
+        "logo": {"width": "45px", "height": "45px", "left": "30px", "top": "15px"},
+        "title": {"text": "AXIOM GENERATOR", "font": "Orbitron", "gradient": "linear-gradient(to bottom, #f3e2c7, #d4af37, #bd9b31, #aa8b2b)"},
+        "nav_buttons": {"border": "2px solid #00bf63", "border_radius": "8px", "padding": "8px 16px", "right": "30px"}
+      }
+    },
+    
+    "OP02_HEADER": {
+      "page": "OP-02 (GNN view)",
+      "height": "120px",
+      "background": "#0a0a0a",
+      "border_bottom": "1px solid #00bf63",
+      "children": {
+        "title": {"text": "MANUAL AXIOM SELECTION", "color": "#00bf63", "font_size": "24px"},
+        "button": {"text": "GENERATE AUDIT REPORT", "background": "#00bf63", "color": "#000", "border_radius": "8px"}
+      }
+    },
+    
+    "OP03_HEADER": {
+      "page": "OP-03 (Upload view)",
+      "height": "100px",
+      "background": "#0a0a0a",
+      "flanks": {"left": "4px solid #00bf63", "right": "4px solid #00bf63"},
+      "buttons": {
+        "layout": "3-column grid",
+        "items": ["MANUAL AXIOM SELECTION", "UPLOAD INPUT FILE", "GENERATE AUDIT REPORT"],
+        "style": {"background": "#9eff1f", "color": "#000", "border_radius": "8px"}
+      }
+    }
+  },
+  
+  "placeholders": {
+    "video_1": {"id": "P01Header_L.mp4", "width": "640px", "height": "360px", "aspect_ratio": "16:9", "border_radius": "0 0 22px 22px"},
+    "video_2": {"id": "gnn_deduction.mp4", "width": "100%", "aspect_ratio": "16:9", "border_radius": "22px"},
+    "video_3": {"id": "world_deduction.mp4", "width": "100%", "aspect_ratio": "16:9", "border_radius": "22px"},
+    "video_4": {"id": "causal_deduction.mp4", "width": "100%", "aspect_ratio": "16:9", "border_radius": "22px"},
+    "upload_zone": {"height": "180px", "border": "2px dashed #00bf63", "border_radius": "12px", "background": "rgba(0, 191, 99, 0.05)"}
+  },
+  
+  "responsive_breakpoints": {
+    "mobile": "max-width: 767px",
+    "tablet": "768px - 1023px",
+    "desktop": "1024px - 1919px",
+    "wide": "min-width: 1920px",
+    
+    "mobile_rules": [
+      "Margins: clamp(10px, 3vw, 20px) — NOT 30px",
+      "Tubes: stack vertically with gap: 8px",
+      "Workspace: flex-direction: column — sidebars full width",
+      "Zone 5 height: clamp(15px, 4vh, 40px)",
+      "Zone 6 width: clamp(10px, 2vw, 20px)",
+      "Headers: height reduces proportionally"
+    ]
+  },
+  
+  "what_AG_forbids": {
+    "forbidden_1": "Fixed 30px margins — use clamp()",
+    "forbidden_2": "8px border-radius — use 22px",
+    "forbidden_3": "Filling breathing spaces with content — keep EMPTY",
+    "forbidden_4": "Horizontal tubes on mobile — stack vertically",
+    "forbidden_5": "3-column grid on mobile — use flex column",
+    "forbidden_6": "Content touching screen edges — maintain breathing space",
+    "forbidden_7": "Removing gaps between tubes — keep 2% on desktop, 8px on mobile"
+  },
+  
+  "css_template": {
+    "root": "body { background: #000000; padding: 0 clamp(10px, 5vw, 60px); }",
+    "header_p01": "border-radius: 0 0 22px 22px; background: linear-gradient(90deg, #ff3131, #ff914d); height: 320px; overflow: hidden;",
+    "tubes_grid": "display: grid; grid-template-columns: repeat(5, 1fr); gap: 2%;",
+    "workspace": "display: grid; grid-template-columns: 350px 1fr 340px;",
+    "sidebar": "border-radius: 22px; overflow: hidden;",
+    "mobile_override": "@media (max-width: 768px) { .tubes-grid { display: flex; flex-direction: column; gap: 8px; } .workspace { display: flex; flex-direction: column; } .workspace > * { width: 100%; } body { padding: 0 clamp(10px, 3vw, 20px); } }"
+  }
+}

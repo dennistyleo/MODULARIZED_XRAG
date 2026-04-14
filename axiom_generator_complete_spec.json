@@ -1,0 +1,122 @@
+{
+  "spec_name": "Axiom Generator Complete Specification",
+  "version": "3.0",
+  "description": "UNIFIED — Software evaluation, causal drift detection, audit reporting in ONE file",
+  
+  "supported_languages": {
+    "fully_supported": ["Python", "JavaScript", "Verilog", "SystemVerilog", "HTML", "CSS", "JSON", "CSV"],
+    "planned": ["C", "C++", "TypeScript", "Rust", "Go", "Shell", "YAML"],
+    "future": ["VHDL", "Swift", "Kotlin", "Dart", "Ruby"]
+  },
+  
+  "evaluation_layers": {
+    "L1_SYNTAX": {"weight": 5, "description": "Basic syntax errors", "implemented": true},
+    "L2_LOGIC": {"weight": 15, "description": "Algorithm correctness, control flow, data flow", "implemented": false},
+    "L3_AXIOM": {"weight": 15, "description": "Physical/ontological constraint compliance", "implemented": false},
+    "L4_STRUCTURE": {"weight": 10, "description": "Architecture reasonableness (complexity, coupling)", "implemented": false},
+    "L5_DESIGN": {"weight": 10, "description": "Design patterns, SOLID principles", "implemented": false},
+    "L6_MAINTAINABILITY": {"weight": 10, "description": "Comment density, function length, nesting", "implemented": false},
+    "L7_DEBUGABILITY": {"weight": 15, "description": "Testability, serviceability, scalability, extendibility", "implemented": false},
+    "L8_FIRMWARE": {"weight": 10, "description": "BIOS, EC, UEFI, bootloader specific", "implemented": false},
+    "L9_COMMON_SENSE": {"weight": 10, "description": "Practical reasonableness", "implemented": false}
+  },
+  
+  "causal_drift_detection": {
+    "description": "Detect when code drifts into incoherence under stress",
+    "standards": ["ISO 26262", "DO-178C", "IEC 61508", "MISRA C/C++", "FDA 21 CFR", "PCI DSS", "NIST 800-53"],
+    "detection_methods": [
+      "Temporal analysis (race conditions, ordering)",
+      "Dataflow analysis (taint tracking, propagation)",
+      "State space analysis (unbounded growth)",
+      "Invariant violation (loop/class invariants)",
+      "Stress test propagation (fault cascading)",
+      "Coherence metrics (input-output correlation)"
+    ],
+    "axioms": [
+      "Conservation of causality — every effect has a cause",
+      "Temporal ordering — causes precede effects",
+      "Coherence preservation — similar inputs → similar outputs",
+      "Bounded propagation — faults don't cascade infinitely",
+      "Recoverability — system recovers after stress"
+    ]
+  },
+  
+  "audit_report": {
+    "sections": [
+      "Report Metadata (ID, timestamp, classification)",
+      "Subject Metadata (file hash, version, author, repo)",
+      "Executive Summary (score, grade, recommendation, risk)",
+      "Scores by Layer (L1-L9 with weights and grades)",
+      "Grade Legend (A+ to F mapping)",
+      "Findings by Severity (CRITICAL/HIGH/MEDIUM/LOW with CWE/CVSS)",
+      "Axiom Violations (causality, conservation, determinism)",
+      "Causal Drift Analysis (coherence score, propagation distance)",
+      "Design Pattern Analysis (detected vs recommended)",
+      "Maintainability Metrics (comment density, function length, nesting)",
+      "Debugability Metrics (testability, serviceability, scalability, extendibility)",
+      "Common Sense Violations (practical issues)",
+      "Remediation Plan (must fix, should fix, nice to have with estimates)",
+      "Standards Compliance (ISO, DO, IEC, MISRA, FDA, PCI, NIST)",
+      "Attachments (JSON, CSV, diff, logs)",
+      "Signatures (auditor, reviewer)",
+      "Disclaimer"
+    ]
+  },
+  
+  "evaluation_process": {
+    "step_1_upload": "User uploads file → language auto-detected from extension",
+    "step_2_L1_syntax": "Parse with language-specific parser → detect syntax errors",
+    "step_3_L2_logic": "Control flow analysis → detect infinite loops, unreachable code",
+    "step_4_L3_axiom": "Check against physical/ontological axioms → detect violations",
+    "step_5_L4_structure": "Calculate cyclomatic complexity, coupling, cohesion",
+    "step_6_L5_design": "Detect design patterns and anti-patterns",
+    "step_7_L6_maintainability": "Measure comment density, function length, nesting depth",
+    "step_8_L7_debugability": "Evaluate testability, serviceability, scalability, extendibility",
+    "step_9_L8_firmware": "BIOS/EC/UEFI specific checks (if applicable)",
+    "step_10_L9_common_sense": "Detect unreasonable configs, hardcoded credentials, zero timeouts",
+    "step_11_causal_drift": "Stress simulation → measure input-output correlation",
+    "step_12_report": "Generate complete audit report in HTML + JSON"
+  },
+  
+  "score_calculation": {
+    "formula": "final_score = Σ(layer_score × layer_weight) / Σ(weights)",
+    "grade_mapping": {
+      "A+": {"range": "95-100", "meaning": "EXCELLENT"},
+      "A": {"range": "90-94", "meaning": "VERY GOOD"},
+      "A-": {"range": "85-89", "meaning": "GOOD"},
+      "B+": {"range": "80-84", "meaning": "ABOVE AVERAGE"},
+      "B": {"range": "75-79", "meaning": "AVERAGE"},
+      "B-": {"range": "70-74", "meaning": "BELOW AVERAGE"},
+      "C+": {"range": "65-69", "meaning": "NEEDS IMPROVEMENT"},
+      "C": {"range": "60-64", "meaning": "POOR"},
+      "C-": {"range": "55-59", "meaning": "VERY POOR"},
+      "D+": {"range": "50-54", "meaning": "CRITICAL ISSUES"},
+      "D": {"range": "40-49", "meaning": "SEVERE ISSUES"},
+      "F": {"range": "0-39", "meaning": "UNACCEPTABLE"}
+    }
+  },
+  
+  "severity_weights": {
+    "CRITICAL": {"points": 50, "action": "MUST FIX BEFORE DEPLOYMENT"},
+    "HIGH": {"points": 20, "action": "SHOULD FIX BEFORE DEPLOYMENT"},
+    "MEDIUM": {"points": 10, "action": "FIX IN NEXT ITERATION"},
+    "LOW": {"points": 2, "action": "NICE TO HAVE"}
+  },
+  
+  "output_formats": {
+    "html": "Human-readable audit report with styling",
+    "json": "Machine-readable structured data",
+    "csv": "Metrics export for further analysis",
+    "diff": "Auto-fix patch suggestions"
+  },
+  
+  "what_AG_must_not_do": [
+    "Use fixed 30px margins — use clamp(10px, 5vw, 60px) instead",
+    "Use 8px border-radius — use 22px instead",
+    "Fill breathing spaces (Zone 5,6,7,8) with content — keep EMPTY",
+    "Ignore causal drift detection — must include coherence metrics",
+    "Output only bug list — must output full audit report",
+    "Skip any of the 9 evaluation layers",
+    "Forget standards compliance section"
+  ]
+}
