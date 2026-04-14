@@ -85,29 +85,13 @@ function qsa(sel, root = document) { return root.querySelectorAll(sel); }
 qs('#initialize-engine')?.addEventListener('click', initEngine);
 
 function initEngine() {
-  state.sessionId = genSessionId();
-  qs('#landing-root').style.display = 'none';
-
-  // Show op-root
-  const opRoot = qs('#op-root');
-  opRoot.classList.add('visible');
-
-  // Apply mode color + data-engine to body
-  document.body.dataset.engine = state.engine;
-
-  _syncEngineDisplay();
-  _renderAllAxiomTrees();  // populate all 3 sidebar axiom trees
-
-  // ── DETERMINISTIC ROUTING: DEDUCTION → Op-3, others → Op-1 ──
-  if (state.engine === 'DEDUCTION') {
-    _showOpPage(3);
-    toast('DEDUCTION mode — Deduction Evaluation page loaded', 'success');
-  } else {
-    _showOpPage(1);
-    toast(`${state.engine} mode — Analysis page loaded`, 'success');
-  }
-
-  console.log(`[SOVEREIGN] Session: ${state.sessionId} | Engine: ${state.engine}`);
+  // ── QUARANTINE BOUNDARY ──────────────────────────────────────────────────
+  // Op-root dashboard lives in a completely separate file.
+  // This call navigates there — landing page code and dashboard code
+  // are now physically isolated from each other.
+  const modeEl = document.querySelector('input[name="logic-mode"]:checked');
+  const mode   = modeEl ? modeEl.value.toUpperCase() : 'ABDUCTION';
+  window.location.href = `/op_root_new.html?mode=${mode}`;
 }
 
 // ── Return to landing ────────────────────────────────────────────────────────
@@ -1648,3 +1632,129 @@ function _generateAuditReport() {
   toast('Audit report generated — ALLOW verdict confirmed', 'success');
 }
 
+
+// ============================================================
+// SOFTWARE DEBUGGING MODULE
+// ============================================================
+
+function initSoftwareDebugger() {
+    const uploadZone = document.getElementById('software-upload-zone');
+    const languageSelect = document.getElementById('software-language');
+    const debugBtn = document.getElementById('debug-software-btn');
+    const resultsDiv = document.getElementById('debug-results');
+    
+    if (!uploadZone) return;
+    
+    // Drag and drop
+    uploadZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadZone.classList.add('drag-over');
+    });
+    
+    uploadZone.addEventListener('dragleave', () => {
+        uploadZone.classList.remove('drag-over');
+    });
+    
+    uploadZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove('drag-over');
+        
+        const file = e.dataTransfer.files[0];
+        if (file) {
+            await debugSoftware(file);
+        }
+    });
+    
+    // Click to upload
+    uploadZone.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.py,.js,.v,.sv,.json,.csv';
+        input.onchange = async (e) => {
+            if (e.target.files[0]) {
+                await debugSoftware(e.target.files[0]);
+            }
+        };
+        input.click();
+    });
+    
+    // Debug button
+    if (debugBtn) {
+        debugBtn.addEventListener('click', async () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = async (e) => {
+                if (e.target.files[0]) {
+                    await debugSoftware(e.target.files[0]);
+                }
+            };
+            input.click();
+        });
+    }
+}
+
+async function debugSoftware(file) {
+    const resultsDiv = document.getElementById('debug-results');
+    if (!resultsDiv) return;
+    
+    resultsDiv.innerHTML = '<div class="loading">🔍 Running L1-L5 pipeline...</div>';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/debug/software', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const results = await response.json();
+        
+        // Display results
+        let html = `
+            <div class="debug-report">
+                <h3>🔍 AXIOM GENERATOR DEBUG REPORT</h3>
+                <div class="debug-meta">
+                    <span>File: ${results.file}</span>
+                    <span>Language: ${results.language}</span>
+                    <span>Score: ${results.score}/100</span>
+                    <span class="status-${results.status.toLowerCase()}">Status: ${results.status}</span>
+                </div>
+                <div class="debug-bugs">
+                    <h4>🐛 Bugs Found (${results.bugs.length})</h4>
+                    <ul>
+                        ${results.bugs.map(bug => `
+                            <li class="severity-${bug.severity.toLowerCase()}">
+                                <strong>[${bug.severity}]</strong> ${bug.type}
+                                <p>${bug.message}</p>
+                                ${bug.suggestion ? `<p class="fix-suggestion">🔧 Fix: ${bug.suggestion}</p>` : ''}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                ${results.fixes.length > 0 ? `
+                <div class="debug-fixes">
+                    <h4>🔧 Suggested Fixes</h4>
+                    <ul>
+                        ${results.fixes.map(fix => `<li>${fix.suggestion}</li>`).join('')}
+                    </ul>
+                    <button onclick="autoFixSoftware()" class="btn-fix">Apply Auto-Fix</button>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        resultsDiv.innerHTML = html;
+        
+    } catch (error) {
+        resultsDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+    }
+}
+
+async function autoFixSoftware() {
+    // Implementation for auto-fix
+    alert('Auto-fix feature will apply suggested fixes automatically');
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', initSoftwareDebugger);

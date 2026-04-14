@@ -12,13 +12,13 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     // PMBus (I2C-compatible) — open-drain bus
     input  wire pmbus_sda_i, pmbus_scl_i,
     output reg  pmbus_sda_o, pmbus_sda_oe,
-    // I2C (generic)
+    // I2C_Controller (generic)
     input  wire i2c_sda_i, i2c_scl_i,
     output reg  i2c_sda_o, i2c_sda_oe,
-    // SPI (full-duplex)
+    // SPI_Interface (full-duplex)
     input  wire spi_sclk, spi_mosi, spi_cs_n,
     output reg  spi_miso,
-    // UART (115200 baud assumed at 100 MHz → 868 cycles/bit)
+    // UART_Interface (115200 baud assumed at 100 MHz → 868 cycles/bit)
     input  wire uart_rx,
     output wire uart_tx,
     // GPIO
@@ -34,7 +34,7 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     always @(posedge clk or negedge rst_n)
         if (!rst_n) data_valid <= 0;
         else        data_valid <= i2c_valid | spi_valid | uart_valid;
-    // ── PMBus / I2C bit-bang receiver ─────────────────────────────────────────
+    // ── PMBus / I2C_Controller bit-bang receiver ─────────────────────────────────────────
     // Detects START, samples 8-bit data, checks ACK
     reg [7:0]  i2c_shift; reg [3:0] i2c_bit_cnt;
     reg        i2c_sda_prev;
@@ -62,7 +62,7 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
         end
     end
 
-    // ── SPI receiver (mode 0: CPOL=0, CPHA=0) ────────────────────────────────
+    // ── SPI_Interface receiver (mode 0: CPOL=0, CPHA=0) ────────────────────────────────
     reg [7:0]  spi_shift; reg [3:0] spi_bit;
     reg        spi_sclk_prev;
     wire       spi_rising = spi_sclk && !spi_sclk_prev;
@@ -86,7 +86,7 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
         end
     end
 
-    // ── UART receiver (115200 baud, 1 start, 8 data, 1 stop) ─────────────────
+    // ── UART_Interface receiver (115200 baud, 1 start, 8 data, 1 stop) ─────────────────
     localparam BAUD_DIV = 868;  // 100 MHz / 115200
     reg [9:0]  baud_cnt; reg [3:0] uart_bit_cnt;
     reg [7:0]  uart_shift;
@@ -121,7 +121,7 @@ module TelemetryAggregator #(parameter FIFO_DEPTH = 16)(
     end
     assign uart_tx = 1'b1;  // No transmitter in this version
 
-    // ── GPIO passthrough ──────────────────────────────────────────────────────
+    // ── GPIO_Interface passthrough ──────────────────────────────────────────────────────
     // ANOM-010 FIX: Added rst_n — gpio_out now 0x00 during reset (was undefined X)
     always @(posedge clk or negedge rst_n)
         if (!rst_n) gpio_out <= 8'h00;

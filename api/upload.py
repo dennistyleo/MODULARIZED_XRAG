@@ -205,3 +205,88 @@ def get_extraction_status(run_id: str):
             "error": str(exc),
             "error_code": "E003",
         }), 500
+
+# ============================================================
+# SOFTWARE DEBUGGING ENDPOINT
+# ============================================================
+
+from modules.software_debugger import SoftwareDebugger
+
+@upload_bp.route('/api/debug/software', methods=['POST'])
+def debug_software():
+    """Upload and debug software code (Python, JS, Verilog)"""
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+    
+    # Determine language from extension
+    ext = file.filename.split('.')[-1].lower()
+    lang_map = {
+        'py': 'python',
+        'js': 'javascript',
+        'v': 'verilog',
+        'sv': 'verilog',
+        'json': 'json',
+        'csv': 'csv'
+    }
+    language = lang_map.get(ext, 'unknown')
+    
+    if language == 'unknown':
+        return jsonify({"error": f"Unsupported file type: {ext}"}), 400
+    
+    # Save temporarily
+    temp_path = f"/tmp/{file.filename}"
+    file.save(temp_path)
+    
+    # Run L1-L5 pipeline
+    debugger = SoftwareDebugger()
+    results = debugger.debug_file(temp_path, language)
+    
+    # Clean up
+    os.remove(temp_path)
+    
+    return jsonify(results)
+
+@upload_bp.route('/api/debug/software/auto-fix', methods=['POST'])
+def auto_fix_software():
+    """Auto-fix detected issues in software code"""
+    
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    
+    file = request.files['file']
+    
+    # Run debugger to get fixes
+    temp_path = f"/tmp/{file.filename}"
+    file.save(temp_path)
+    
+    debugger = SoftwareDebugger()
+    results = debugger.debug_file(temp_path)
+    
+    # Generate fixed code based on suggestions
+    fixed_code = None
+    if results['fixes']:
+        with open(temp_path, 'r') as f:
+            original_code = f.read()
+        
+        fixed_code = original_code
+        for fix in results['fixes']:
+            # Apply each fix suggestion
+            if fix['suggestion'] == '=== watching':
+                fixed_code = fixed_code.replace('==', '===')
+            elif fix['suggestion'] == 'except Exception as e:':
+                fixed_code = fixed_code.replace('except:', 'except Exception as e:')
+    
+    os.remove(temp_path)
+    
+    return jsonify({
+        "original_file": file.filename,
+        "bugs_found": len(results['bugs']),
+        "score": results['score'],
+        "fixed_code": fixed_code,
+        "fixes_applied": results['fixes']
+    })
