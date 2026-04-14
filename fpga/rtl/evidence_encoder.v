@@ -1,12 +1,12 @@
 // =============================================================================
-// Module  : evidence_encoder.v  | Version: 1.2.0
+// Module  : EvidenceEncoder.v  | Version: 1.3.0
 // Purpose : Encodes telemetry evidence into 256-bit records for axiom engine
-// FIXED   : Consolidated multiple drivers into single always block
+// FIXED   : Added all ports expected by ontology_silicon_module.v
 // =============================================================================
 `timescale 1ns/1ps
 `default_nettype none
 
-module evidence_encoder #(
+module EvidenceEncoder #(
     parameter FIFO_DEPTH = 1024,
     parameter FIFO_WIDTH = 256
 )(
@@ -21,15 +21,20 @@ module evidence_encoder #(
     input  wire [31:0] severity,
     input  wire [95:0] payload,
     
-    // Read side (axiom engine output)
-    output reg         ev_has_data,
-    input  wire        ev_read_ready,
-    output reg  [FIFO_WIDTH-1:0] ev_read_data,
+    // Read side (AXI-Stream output)
+    output reg  [FIFO_WIDTH-1:0] m_axis_tdata,
+    output reg                    m_axis_tvalid,
+    input  wire                   m_axis_tready,
     
-    // Status
+    // Status outputs (for ontology_silicon_module)
     output reg  [9:0]  ev_count,
     output reg  [31:0] dropped_count,
-    output reg         overflow_flag
+    output reg         overflow_flag,
+    
+    // Additional status ports expected by ontology_silicon_module
+    output reg  [FIFO_WIDTH-1:0] ev_data,
+    output reg                    ev_empty,
+    output reg                    ev_full
 );
 
     // FIFO storage
@@ -46,14 +51,14 @@ module evidence_encoder #(
     assign full  = (count == FIFO_DEPTH);
     assign empty = (count == 0);
     assign write_en = ev_valid && ev_ready && !full;
-    assign read_en  = ev_has_data && ev_read_ready && !empty;
+    assign read_en  = m_axis_tvalid && m_axis_tready && !empty;
     
     // Pack data into 256-bit record
     wire [FIFO_WIDTH-1:0] packed_data;
     assign packed_data = {ts_ns, event_id, state_id, severity, payload};
     
     // ============================================================
-    // UNIFIED ALWAYS BLOCK — ALL REGISTERS IN ONE PLACE
+    // UNIFIED ALWAYS BLOCK
     // ============================================================
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -64,8 +69,11 @@ module evidence_encoder #(
             dropped_count <= 0;
             overflow_flag <= 0;
             ev_ready <= 1;
-            ev_has_data <= 0;
-            ev_read_data <= 0;
+            m_axis_tvalid <= 0;
+            m_axis_tdata <= 0;
+            ev_data <= 0;
+            ev_empty <= 1;
+            ev_full <= 0;
         end else begin
             // Defaults
             ev_ready <= 1;
@@ -84,14 +92,22 @@ module evidence_encoder #(
             // FIFO read operation
             // ========================================================
             if (read_en) begin
-                ev_read_data <= fifo[rd_ptr];
+                m_axis_tdata <= fifo[rd_ptr];
+                ev_data <= fifo[rd_ptr];
                 rd_ptr <= rd_ptr + 1;
                 count <= count - 1;
                 ev_count <= ev_count - 1;
             end
             
             // ========================================================
-            // Overflow handling (dropped events)
+            // Output valid signals
+            // ========================================================
+            m_axis_tvalid <= !empty;
+            ev_empty <= empty;
+            ev_full <= full;
+            
+            // ========================================================
+            // Overflow handling
             // ========================================================
             if (ev_valid && full) begin
                 dropped_count <= dropped_count + 1;
@@ -101,16 +117,11 @@ module evidence_encoder #(
             end
             
             // ========================================================
-            // Reset dropped_count when it reaches max (optional)
+            // Reset dropped_count on overflow wrap
             // ========================================================
             if (dropped_count == 32'hFFFF_FFFF) begin
                 dropped_count <= 0;
             end
-            
-            // ========================================================
-            // Status outputs
-            // ========================================================
-            ev_has_data <= !empty;
             
         end
     end
